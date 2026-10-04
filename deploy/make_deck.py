@@ -226,7 +226,7 @@ for i, (t, d) in enumerate(steps):
     text(s, x + 0.12, 2.55, 1.65, 1.2, d.split("\n"), 11, RGBColor(0xC9, 0xCE, 0xDA) if i in (2, 4) else INK2, spacing=2)
 text(s, 0.6, 4.2, 12.2, 3, [
     "Runs fully local on a 6 GB laptop GPU: Qwen 2.5 7B (analysis) + Gemma 3 4B (Hindi, vision) via Ollama, faster-whisper, Kokoro TTS. No data leaves the device.",
-    "Hosted demo: same code with Google Gemini behind a server-side key and per-visitor limits.",
+    "Hosted demo on AWS (EC2, Mumbai): same code, AI via Amazon Bedrock with Groq/Gemini fallback, server-side keys, per-visitor limits.",
     "Stack: Python · FastAPI · SQLite · React + TypeScript + Tailwind · Docker. 31 unit tests; labelled eval sets.",
 ], 15, INK2, bullet=True, spacing=10)
 

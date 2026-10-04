@@ -16,6 +16,8 @@ explained in English or Hindi, with a natural voice.
 
 No cloud AI is used, no API keys are needed and no data leaves your machine.
 
+**Live demo:** https://13-233-152-160.sslip.io (hosted on AWS; this public version uses cloud AI, see [below](#hosted-demo)).
+
 <img src="docs/report.png" alt="Audit report: risk score, timestamped findings, SEBI registry check" width="900">
 
 </div>
@@ -233,6 +235,14 @@ docker compose up --build        # pulls models on first run, then serves on :80
 ```
 
 The image builds, but the full GPU compose stack has not been tested end-to-end yet; the native setup above is the tested path.
+
+### Hosted demo
+
+The public demo runs the same code with `NIRIKSHAK_PROVIDER=cloud`: AI calls go to Amazon Bedrock
+(`gpt-oss-120b`), falling back to Groq and then Google Gemini, with keys kept server-side and a per-visitor
+hourly limit. It runs on one EC2 instance behind Caddy for HTTPS; see [deploy/AWS_DEPLOY.md](deploy/AWS_DEPLOY.md).
+Cloud mode is less consistent than the local models on video audits (held-out F1 0.74–0.93 depending on which
+model answers, vs 0.92 locally) and matches them on forwarded messages (0.96).
 
 For frontend development, run `npm run dev` in `frontend/`; it proxies `/api` to `:8000`.
 
