@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Check, Loader2 } from 'lucide-react'
+import { AlertTriangle, AudioLines, Check, FileText, Link2, Loader2, ScanText, ShieldCheck, Sparkles } from 'lucide-react'
 import { watchJob } from '../api'
 import { go } from '../ui'
 import { useLang } from '../i18n'
 import type { Strings } from '../i18n'
+import Glass from '../components/ui/Glass'
+import { LinkButton } from '../components/ui/Button'
 
 const STAGES = ['fetch', 'transcribe', 'scan', 'analyse', 'registry', 'summary'] as const
 type Stage = (typeof STAGES)[number]
+const ICONS = { fetch: Link2, transcribe: AudioLines, scan: ScanText, analyse: Sparkles, registry: ShieldCheck, summary: FileText }
 
 export default function Job({ id }: { id: string }) {
   const { t, lang } = useLang()
@@ -33,48 +36,73 @@ export default function Job({ id }: { id: string }) {
 
   const current = stage ? STAGES.indexOf(stage) : -1
   const overall = Math.round(((Math.max(current, 0) + (stage ? frac : 0)) / STAGES.length) * 100)
+  const title = error ? t.failed : queued ? t.queued : t.working
+  const r = 52
+  const c = 2 * Math.PI * r
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-16">
-      <h1 className="text-2xl font-bold">{error ? t.failed : queued ? t.queued : t.working}</h1>
-      {!error && (
-        <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-          <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${overall}%` }} />
+    <div className="mx-auto max-w-2xl px-4 pt-12 sm:pt-20">
+      <Glass strong className="p-6 sm:p-10">
+        <div className="flex flex-col items-center text-center">
+          {/* Progress ring */}
+          <div className="relative size-40">
+            <div className="absolute inset-4 rounded-full blur-2xl opacity-50"
+              style={{ background: error ? '#ff3b30' : 'linear-gradient(135deg,#ff9500,#c644fc)' }} />
+            <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90">
+              <defs>
+                <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#ff9500" /><stop offset="60%" stopColor="#ff5e3a" /><stop offset="100%" stopColor="#c644fc" />
+                </linearGradient>
+              </defs>
+              <circle cx="60" cy="60" r={r} fill="none" stroke="var(--hairline)" strokeWidth="8" />
+              <circle cx="60" cy="60" r={r} fill="none" stroke={error ? '#ff3b30' : 'url(#ring)'} strokeWidth="8" strokeLinecap="round"
+                strokeDasharray={`${(c * (error ? 100 : overall)) / 100} ${c}`}
+                style={{ transition: 'stroke-dasharray .8s var(--ease-out-soft)' }} />
+            </svg>
+            <div className="absolute inset-0 grid place-items-center">
+              {error ? <AlertTriangle className="size-10 text-[#ff3b30]" /> : (
+                <span className="display tabular text-[2.75rem]">{overall}<span className="text-lg text-ink-3">%</span></span>
+              )}
+            </div>
+          </div>
+          <h1 className="display mt-6 text-2xl sm:text-3xl">{title}</h1>
+          {!error && stage && msgs[stage] && (
+            <p className="mt-2 max-w-md truncate text-sm text-ink-2">{msgs[stage]![lang]}</p>
+          )}
         </div>
-      )}
 
-      <ol className="mt-8 space-y-1">
-        {STAGES.map((s, i) => {
-          const done = i < current || (i === current && frac >= 1)
-          const active = i === current && !done
-          return (
-            <li key={s} className={`flex items-start gap-3 rounded-lg px-3 py-2.5 ${active ? 'bg-white dark:bg-slate-900 shadow-sm' : ''}`}>
-              <span
-                className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs ${
-                  done ? 'bg-emerald-500 text-white' : active ? 'bg-amber-400 text-slate-900' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
-                }`}
-              >
-                {done ? <Check className="size-3.5" /> : active && !error ? <Loader2 className="size-3.5 animate-spin" /> : i + 1}
-              </span>
-              <div className="min-w-0">
-                <p className={`font-medium ${!done && !active ? 'text-slate-400' : ''}`}>{t[`stage_${s}` as keyof Strings] as string}</p>
-                {msgs[s] && <p className="text-sm text-slate-500 truncate">{msgs[s][lang]}</p>}
-              </div>
-            </li>
-          )
-        })}
-      </ol>
+        <ol className="mt-8 grid gap-2">
+          {STAGES.map((s, i) => {
+            const done = i < current || (i === current && frac >= 1)
+            const active = i === current && !done
+            const Icon = ICONS[s]
+            return (
+              <li key={s}
+                className={`flex items-center gap-3.5 rounded-2xl px-3.5 py-3 transition-all duration-500 ${active ? 'glass-inset' : ''}`}>
+                <span className={`grid size-9 shrink-0 place-items-center rounded-full transition-all duration-500 ${
+                  done ? 'bg-[#34c759] text-white shadow-[0_4px_14px_-4px_#34c759]'
+                    : active ? 'bg-[linear-gradient(135deg,#ff9500,#ff5e3a)] text-white shadow-[0_4px_14px_-4px_#ff5e3a]'
+                      : 'bg-[var(--glass-inset)] text-ink-3'
+                }`}>
+                  {done ? <Check className="size-4" strokeWidth={3} /> : active && !error ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
+                </span>
+                <div className="min-w-0 flex-1 text-left">
+                  <p className={`font-semibold ${!done && !active ? 'text-ink-3' : 'text-ink'}`}>{t[`stage_${s}` as keyof Strings] as string}</p>
+                  {msgs[s] && <p className="truncate text-[13px] text-ink-3">{msgs[s]![lang]}</p>}
+                </div>
+                {done && <span className="text-xs font-medium text-[#34c759]">{t.stepsDone}</span>}
+              </li>
+            )
+          })}
+        </ol>
 
-      {error && (
-        <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-          <p className="flex items-start gap-2 text-red-700 dark:text-red-400">
-            <AlertTriangle className="size-5 shrink-0" /> {error}
-          </p>
-          <a href="#/" className="mt-3 inline-block font-semibold underline">
-            {t.tryAgain}
-          </a>
-        </div>
-      )}
+        {error && (
+          <Glass tone="red" className="mt-6 rounded-2xl! p-4">
+            <p className="text-sm text-ink">{error}</p>
+            <LinkButton href="#/" variant="primary" size="sm" className="mt-3">{t.tryAgain}</LinkButton>
+          </Glass>
+        )}
+      </Glass>
     </div>
   )
 }

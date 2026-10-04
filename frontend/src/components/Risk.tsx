@@ -1,37 +1,44 @@
 import { useLang } from '../i18n'
+import { LEVEL_HEX } from '../ui'
 
-const LEVEL = {
-  low: { ring: 'text-emerald-500', pill: 'bg-emerald-500 text-white' },
-  medium: { ring: 'text-amber-500', pill: 'bg-amber-400 text-slate-900' },
-  high: { ring: 'text-red-500', pill: 'bg-red-500 text-white' },
-}
+type Level = 'low' | 'medium' | 'high'
 
-export function RiskPill({ level, score }: { level: 'low' | 'medium' | 'high'; score: number }) {
+export function RiskPill({ level, score }: { level: Level; score: number }) {
   const { t } = useLang()
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold shadow ${LEVEL[level].pill}`}>
-      {score} · {t[`risk_${level}`]}
+    <span
+      className="glass-pill inline-flex h-7 items-center gap-1.5 px-2.5 text-xs font-semibold text-ink"
+      style={{ background: `color-mix(in oklab, ${LEVEL_HEX[level]} 22%, var(--glass-strong))` }}
+    >
+      <span className="size-2 rounded-full" style={{ background: LEVEL_HEX[level], boxShadow: `0 0 10px ${LEVEL_HEX[level]}` }} />
+      <span className="font-mono tabular">{score}</span>
+      <span className="text-ink-2">{t[`risk_${level}`]}</span>
     </span>
   )
 }
 
-export function RiskGauge({ level, score }: { level: 'low' | 'medium' | 'high'; score: number }) {
+/** Risk score as a glowing ring inside a glass orb. */
+export function RiskGauge({ level, score, size = 168 }: { level: Level; score: number; size?: number }) {
   const { t } = useLang()
-  const r = 52
+  const r = 54
   const c = 2 * Math.PI * r
-  const arc = c * 0.75
+  const arc = c * 0.78
+  const color = LEVEL_HEX[level]
   return (
-    <div className="relative size-40 shrink-0">
-      <svg viewBox="0 0 120 120" className="size-full -rotate-[225deg]">
-        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" strokeLinecap="round"
-          className="stroke-slate-200 dark:stroke-slate-800" strokeDasharray={`${arc} ${c}`} />
-        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" strokeLinecap="round" stroke="currentColor"
-          className={`${LEVEL[level].ring} transition-all duration-700`} strokeDasharray={`${(arc * score) / 100} ${c}`} />
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <div className="glass absolute inset-0 rounded-full" style={{ borderRadius: '9999px' }} />
+      <div className="absolute inset-3 rounded-full blur-2xl opacity-40" style={{ background: color }} />
+      <svg viewBox="0 0 128 128" className="absolute inset-0 -rotate-[230deg]">
+        <circle cx="64" cy="64" r={r} fill="none" strokeWidth="9" strokeLinecap="round"
+          stroke="var(--hairline)" strokeDasharray={`${arc} ${c}`} />
+        <circle cx="64" cy="64" r={r} fill="none" strokeWidth="9" strokeLinecap="round" stroke={color}
+          strokeDasharray={`${(arc * score) / 100} ${c}`}
+          style={{ filter: `drop-shadow(0 0 6px ${color})`, transition: 'stroke-dasharray 1.2s var(--ease-out-soft)' }} />
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center">
         <div>
-          <div className="text-4xl font-extrabold tabular-nums">{score}</div>
-          <div className={`text-sm font-semibold ${LEVEL[level].ring}`}>{t[`risk_${level}`]}</div>
+          <div className="display tabular text-[3.25rem] leading-none">{score}</div>
+          <div className="mt-1.5 text-[13px] font-semibold" style={{ color }}>{t[`risk_${level}`]}</div>
         </div>
       </div>
     </div>

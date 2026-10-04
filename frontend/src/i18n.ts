@@ -2,6 +2,22 @@ import { createContext, useContext } from 'react'
 import type { Lang, Verdict } from './types'
 
 const en = {
+  themeSystem: 'Automatic',
+  themeLight: 'Light',
+  themeDark: 'Dark',
+  localBadge: 'Runs on this computer',
+  heroKicker: 'Investor protection · SEBI-aware · English & हिन्दी',
+  heroTitleA: 'Is this finance video',
+  heroTitleB: 'safe to trust?',
+  feat1Title: 'Every claim, timestamped',
+  feat1Body: 'Guaranteed returns, buy/sell calls, hype and hidden promotions, quoted word for word with the exact moment.',
+  feat2Title: 'Checked against SEBI',
+  feat2Body: 'Registration numbers, names, guest experts and websites matched against 6,600+ SEBI-registered entities.',
+  feat3Title: 'Made for Bharat',
+  feat3Body: 'Hindi and English speech, a full Hindi report and a natural voice that reads the summary aloud.',
+  viewAll: 'View report',
+  stepsDone: 'complete',
+  backHome: 'Home',
   tagline: 'AI auditor for finance-influencer videos',
   heroTitle: 'Is this finance video safe to trust?',
   heroSub:
@@ -107,6 +123,22 @@ const en = {
 }
 
 const hi: typeof en = {
+  themeSystem: 'अपने आप',
+  themeLight: 'लाइट',
+  themeDark: 'डार्क',
+  localBadge: 'इसी कंप्यूटर पर चलता है',
+  heroKicker: 'निवेशकों की सुरक्षा · SEBI जाँच · हिन्दी और English',
+  heroTitleA: 'क्या इस फाइनेंस वीडियो पर',
+  heroTitleB: 'भरोसा किया जा सकता है?',
+  feat1Title: 'हर दावा, समय के साथ',
+  feat1Body: 'गारंटीड रिटर्न, खरीदने-बेचने की टिप, हाइप और छिपा प्रमोशन, हूबहू शब्दों और सही समय के साथ।',
+  feat2Title: 'SEBI से मिलान',
+  feat2Body: 'रजिस्ट्रेशन नंबर, नाम, गेस्ट एक्सपर्ट और वेबसाइट, 6,600 से ज़्यादा SEBI-रजिस्टर्ड नामों से मिलाए जाते हैं।',
+  feat3Title: 'भारत के लिए',
+  feat3Body: 'हिंदी और अंग्रेज़ी आवाज़, पूरी हिंदी रिपोर्ट, और सारांश पढ़कर सुनाने वाली साफ़ आवाज़।',
+  viewAll: 'रिपोर्ट देखें',
+  stepsDone: 'पूरा',
+  backHome: 'होम',
   tagline: 'फाइनेंस वीडियो की AI जाँच',
   heroTitle: 'क्या इस फाइनेंस वीडियो पर भरोसा किया जा सकता है?',
   heroSub:

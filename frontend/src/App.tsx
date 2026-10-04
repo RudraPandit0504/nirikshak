@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ScanSearch } from 'lucide-react'
+import { Monitor, Moon, ScanSearch, Sun } from 'lucide-react'
 import { getMeta } from './api'
 import { LangContext, STRINGS } from './i18n'
 import type { Lang, Meta } from './types'
+import Backdrop from './components/Backdrop'
+import Segmented from './components/ui/Segmented'
+import { useTheme, type ThemePref } from './components/ui/theme'
 import Home from './views/Home'
 import Job from './views/Job'
 import ReportView from './views/ReportView'
@@ -32,6 +35,7 @@ export default function App() {
   const [route, setRoute] = useState<Route>(() => parse(window.location.hash))
   const [lang, setLangState] = useState<Lang>(initialLang)
   const [meta, setMeta] = useState<Meta | null>(null)
+  const [theme, setTheme] = useTheme()
 
   useEffect(() => {
     const on = () => {
@@ -55,57 +59,72 @@ export default function App() {
     }
   }
   const ctx = useMemo(() => ({ lang, t: STRINGS[lang], setLang }), [lang])
+  const t = ctx.t
 
   useEffect(() => {
     document.documentElement.lang = lang
   }, [lang])
 
+  const themeIcon = { system: Monitor, light: Sun, dark: Moon }
+  const nextTheme: Record<ThemePref, ThemePref> = { system: 'light', light: 'dark', dark: 'system' }
+  const ThemeIcon = themeIcon[theme]
+  const themeName = { system: t.themeSystem, light: t.themeLight, dark: t.themeDark }[theme]
+
   return (
     <LangContext.Provider value={ctx}>
+      <Backdrop />
       <div className="min-h-screen flex flex-col">
-        <header className="no-print sticky top-0 z-20 border-b border-slate-200/70 dark:border-slate-800/70 bg-white/80 dark:bg-slate-950/80 backdrop-blur">
-          <div className="mx-auto max-w-7xl px-4 h-14 flex items-center justify-between gap-3">
-            <a href="#/" className="flex items-center gap-2.5 min-w-0">
-              <span className="grid place-items-center size-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-900">
-                <ScanSearch className="size-5" />
+        {/* Floating navigation capsule */}
+        <header className="no-print sticky top-0 z-30 px-3 pt-3 sm:px-6 sm:pt-4">
+          <nav className="glass-pill mx-auto flex h-14 max-w-[1200px] items-center justify-between gap-2 pl-2 pr-2 sm:pl-3">
+            <a href="#/" className="flex min-w-0 items-center gap-2.5 rounded-full pr-2">
+              <span className="relative grid size-10 place-items-center rounded-full bg-[linear-gradient(135deg,#ff9500,#ff5e3a_55%,#c644fc)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.5),0_6px_16px_-6px_rgba(255,94,58,.7)]">
+                <ScanSearch className="size-5" strokeWidth={2.2} />
               </span>
-              <span className="font-extrabold tracking-tight text-lg">
-                Nirikshak <span className="font-semibold text-slate-400" lang="hi">निरीक्षक</span>
+              <span className="display text-[17px] leading-none">
+                Nirikshak
+                <span className="ml-1.5 font-hindi text-[15px] font-semibold text-ink-3" lang="hi">निरीक्षक</span>
               </span>
-              <span className="hidden md:inline text-sm text-slate-500 truncate">· {ctx.t.tagline}</span>
             </a>
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {meta && (
-                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                  {meta.model} · {meta.registry_size.toLocaleString('en-IN')} {ctx.t.sebiEntities}
+                <span className="hidden lg:inline-flex h-8 items-center gap-2 rounded-full px-3 text-xs font-medium text-ink-2 bg-[var(--glass-inset)]">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#34c759] opacity-60" />
+                    <span className="relative inline-flex size-2 rounded-full bg-[#34c759]" />
+                  </span>
+                  {t.localBadge} · <span className="font-mono">{meta.model}</span> · {meta.registry_size.toLocaleString('en-IN')} {t.sebiEntities}
                 </span>
               )}
-              <div className="flex rounded-lg border border-slate-200 dark:border-slate-800 p-0.5 text-sm">
-                {(['en', 'hi'] as Lang[]).map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => setLang(l)}
-                    className={`px-2.5 py-1 rounded-md font-medium transition ${
-                      lang === l ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {l === 'en' ? 'EN' : 'हिं'}
-                  </button>
-                ))}
-              </div>
+              <button
+                onClick={() => setTheme(nextTheme[theme])}
+                title={themeName}
+                aria-label={themeName}
+                className="grid size-9 place-items-center rounded-full text-ink-2 transition hover:bg-[var(--glass-inset)] hover:text-ink"
+              >
+                <ThemeIcon className="size-[18px]" />
+              </button>
+              <Segmented
+                size="sm"
+                label="Language"
+                value={lang}
+                onChange={setLang}
+                options={[{ value: 'en', label: 'EN' }, { value: 'hi', label: <span lang="hi">हिं</span> }]}
+                className="w-[104px]"
+              />
             </div>
-          </div>
+          </nav>
         </header>
 
-        <main className="flex-1">
+        <main key={route.name + ('id' in route ? route.id : '')} className="flex-1 animate-enter">
           {route.name === 'home' && <Home />}
           {route.name === 'job' && <Job id={route.id} />}
           {route.name === 'report' && <ReportView id={route.id} meta={meta} />}
         </main>
 
-        <footer className="no-print border-t border-slate-200 dark:border-slate-800 py-6 px-4 text-center text-xs text-slate-500 max-w-3xl mx-auto">
-          {ctx.t.footer}
+        <footer className="no-print px-4 pb-8 pt-12">
+          <p className="mx-auto max-w-2xl text-center text-xs leading-relaxed text-ink-3">{t.footer}</p>
         </footer>
       </div>
     </LangContext.Provider>

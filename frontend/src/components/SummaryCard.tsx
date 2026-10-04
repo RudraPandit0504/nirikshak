@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertTriangle, BadgeCheck, CircleAlert, FileText, Loader2, Play, ShieldCheck, Square, Volume2 } from 'lucide-react'
 import { fmtTime } from '../api'
 import { useLang } from '../i18n'
 import type { Category, Report } from '../types'
-import { CAT_COLOR } from '../ui'
+import { CAT_COLOR, LEVEL_HEX } from '../ui'
 import { RiskGauge } from './Risk'
+import Glass from './ui/Glass'
+import { Button } from './ui/Button'
 
 type AudioState = 'idle' | 'loading' | 'playing'
 
@@ -51,88 +53,103 @@ function useReadAloud(reportId: string, lang: 'en' | 'hi', fallbackText: string)
   return { state, toggle }
 }
 
-export default function SummaryCard({ report, catLabel, onSeek }: {
+/** Top of the report: score orb, title, verdict headline, overview and actions. */
+export function ReportHero({ report, meta, actions }: { report: Report; meta: ReactNode; actions: ReactNode }) {
+  const { t, lang } = useLang()
+  const s = report.summary?.[lang]
+  const fallback = lang === 'hi' && report.summary_hi ? report.summary_hi : report.summary_en
+  const { state, toggle } = useReadAloud(report.id, lang, fallback)
+  const color = LEVEL_HEX[report.risk_level]
+
+  return (
+    <Glass strong className="overflow-hidden p-6 sm:p-8">
+      <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full blur-3xl opacity-25" style={{ background: color }} />
+      <div className="relative flex flex-col gap-7 md:flex-row md:items-center">
+        <RiskGauge level={report.risk_level} score={report.risk_score} />
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] text-ink-3">{meta}</div>
+          <h1 className="display mt-2 text-[clamp(1.5rem,3vw,2.25rem)] leading-tight text-ink">{report.source.title}</h1>
+          <p className="mt-4 text-lg font-semibold leading-snug" lang={lang} style={{ color: `color-mix(in oklab, ${color} 70%, var(--ink))` }}>
+            {s?.headline ?? fallback}
+          </p>
+          {s && <p className="mt-2 max-w-3xl leading-relaxed text-ink-2" lang={lang}>{s.overview}</p>}
+          <div className="mt-6 flex flex-wrap items-center gap-2 no-print">
+            <Button variant="primary" onClick={toggle}>
+              {state === 'loading' ? <Loader2 className="size-4 animate-spin" /> : state === 'playing' ? <Square className="size-4" /> : <Volume2 className="size-4" />}
+              {state === 'loading' ? t.preparingAudio : state === 'playing' ? t.stop : t.listen}
+            </Button>
+            {actions}
+          </div>
+        </div>
+      </div>
+    </Glass>
+  )
+}
+
+/** Below the hero: main concerns, registration status and what to do. */
+export function ReportBrief({ report, catLabel, onSeek }: {
   report: Report
   catLabel: (c: Category) => string
   onSeek?: (t: number) => void
 }) {
   const { t, lang } = useLang()
   const s = report.summary?.[lang]
-  const fallback = lang === 'hi' && report.summary_hi ? report.summary_hi : report.summary_en
-  const { state, toggle } = useReadAloud(report.id, lang, fallback)
-  const tone = { low: 'border-emerald-500', medium: 'border-amber-500', high: 'border-red-500' }[report.risk_level]
+  if (!s) return null
 
   return (
-    <section className={`card border-l-4 ${tone}`}>
-      <div className="flex flex-col sm:flex-row gap-5 sm:items-center">
-        <RiskGauge level={report.risk_level} score={report.risk_score} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <p className="label">{t.summary}</p>
-            <button
-              onClick={toggle}
-              className="no-print inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
-            >
-              {state === 'loading' ? <Loader2 className="size-3.5 animate-spin" /> : state === 'playing' ? <Square className="size-3.5" /> : <Volume2 className="size-3.5" />}
-              {state === 'loading' ? t.preparingAudio : state === 'playing' ? t.stop : t.listen}
-            </button>
-          </div>
-          <h2 className="mt-2 text-lg sm:text-xl font-bold leading-snug" lang={lang}>{s?.headline ?? fallback}</h2>
-          {s && <p className="mt-2 leading-relaxed text-slate-700 dark:text-slate-300" lang={lang}>{s.overview}</p>}
-        </div>
+    <div className="grid gap-5 lg:grid-cols-[1.25fr_1fr]">
+      <Glass className="p-6">
+        <p className="eyebrow flex items-center gap-1.5"><CircleAlert className="size-3.5" /> {t.mainConcerns}</p>
+        {s.concerns.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-2">{t.noFindings}</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {s.concerns.map((c, i) => (
+              <li key={i} className="glass-inset flex gap-3 p-3.5">
+                {c.where === 'transcript' ? (
+                  <button
+                    onClick={() => onSeek?.(c.start)}
+                    disabled={!onSeek}
+                    className="no-print inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-[var(--ink)] px-2.5 font-mono text-xs font-medium text-[var(--bg)] transition active:scale-95"
+                  >
+                    {onSeek && <Play className="size-3" fill="currentColor" />}{fmtTime(c.start)}
+                  </button>
+                ) : (
+                  <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-[var(--glass-inset)] px-2.5 text-xs text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">
+                    <FileText className="size-3" /> {t.inDescription}
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                    <span className={`size-2 rounded-full ${CAT_COLOR[c.category]}`} /> {catLabel(c.category)}
+                  </p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-ink-2" lang={lang}>{c.why}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Glass>
+
+      <div className="grid gap-5">
+        <Glass className="p-6">
+          <p className="eyebrow flex items-center gap-1.5"><ShieldCheck className="size-3.5" /> {t.registrationStatus}</p>
+          <p className="mt-3 text-sm leading-relaxed text-ink-2" lang={lang}>{s.registration}</p>
+        </Glass>
+        <Glass className="p-6">
+          <p className="eyebrow flex items-center gap-1.5">
+            {report.risk_level === 'low' ? <BadgeCheck className="size-3.5" /> : <AlertTriangle className="size-3.5" />} {t.whatYouShouldDo}
+          </p>
+          <ul className="mt-3 space-y-2.5" lang={lang}>
+            {s.advice.map((a, i) => (
+              <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink-2">
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-[linear-gradient(135deg,#ff9500,#ff5e3a)]" />
+                {a}
+              </li>
+            ))}
+          </ul>
+        </Glass>
       </div>
-
-      {s && (
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <div>
-            <p className="label flex items-center gap-1.5"><CircleAlert className="size-3.5" /> {t.mainConcerns}</p>
-            {s.concerns.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-500">{t.noFindings}</p>
-            ) : (
-              <ul className="mt-3 space-y-3">
-                {s.concerns.map((c, i) => (
-                  <li key={i} className="flex gap-3 text-sm">
-                    {c.where === 'transcript' ? (
-                      <button
-                        onClick={() => onSeek?.(c.start)}
-                        disabled={!onSeek}
-                        className="no-print h-6 shrink-0 inline-flex items-center gap-1 rounded-md bg-slate-900 px-1.5 font-mono text-xs text-white dark:bg-slate-100 dark:text-slate-900"
-                      >
-                        {onSeek && <Play className="size-3" />}{fmtTime(c.start)}
-                      </button>
-                    ) : (
-                      <span className="h-6 shrink-0 inline-flex items-center gap-1 rounded-md bg-slate-200 dark:bg-slate-800 px-1.5 text-xs">
-                        <FileText className="size-3" /> {t.inDescription}
-                      </span>
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-semibold flex items-center gap-1.5">
-                        <span className={`size-2 rounded-full ${CAT_COLOR[c.category]}`} /> {catLabel(c.category)}
-                      </p>
-                      <p className="text-slate-600 dark:text-slate-400" lang={lang}>{c.why}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="space-y-5">
-            <div>
-              <p className="label flex items-center gap-1.5"><ShieldCheck className="size-3.5" /> {t.registrationStatus}</p>
-              <p className="mt-2 text-sm text-slate-700 dark:text-slate-300" lang={lang}>{s.registration}</p>
-            </div>
-            <div>
-              <p className="label flex items-center gap-1.5">
-                {report.risk_level === 'low' ? <BadgeCheck className="size-3.5" /> : <AlertTriangle className="size-3.5" />} {t.whatYouShouldDo}
-              </p>
-              <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-300 list-disc pl-4" lang={lang}>
-                {s.advice.map((a, i) => <li key={i}>{a}</li>)}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
+    </div>
   )
 }

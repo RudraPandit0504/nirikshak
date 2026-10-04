@@ -4,13 +4,16 @@ export const go = (path: string) => {
   window.location.hash = path
 }
 
+// Apple system colours, so category dots match the glass UI in light and dark mode.
 export const CAT_COLOR: Record<Category, string> = {
-  guaranteed_returns: 'bg-red-500',
-  stock_tip: 'bg-rose-500',
-  price_prediction: 'bg-orange-500',
-  urgency_fomo: 'bg-amber-500',
-  paid_promotion: 'bg-violet-500',
-  paid_group: 'bg-fuchsia-500',
-  registration_claim: 'bg-sky-500',
-  misleading_claim: 'bg-pink-500',
+  guaranteed_returns: 'bg-[#ff3b30]',
+  stock_tip: 'bg-[#ff2d55]',
+  price_prediction: 'bg-[#ff9500]',
+  urgency_fomo: 'bg-[#ffcc00]',
+  paid_promotion: 'bg-[#af52de]',
+  paid_group: 'bg-[#5856d6]',
+  registration_claim: 'bg-[#32ade6]',
+  misleading_claim: 'bg-[#ff6482]',
 }
+
+export const LEVEL_HEX: Record<'low' | 'medium' | 'high', string> = { low: '#34c759', medium: '#ff9f0a', high: '#ff3b30' }
