@@ -86,7 +86,7 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
             {source.duration > 0 && <> · {fmtTime(source.duration)}</>}
             {' · '}
             {source.transcript_source === 'whisper' ? t.whisper : t.captions}
-            {source.language && <> ({source.language})</>}
+            {source.language && <> ({t.langNames[source.language] ?? source.language})</>}
           </p>
         </div>
         <div className="no-print flex gap-2">
@@ -228,14 +228,14 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
               <li>{t.todo3}</li>
             </ul>
             <div className="mt-3 flex flex-wrap gap-2 text-xs no-print">
-              <a className="link" href={SEBI_RA} target="_blank" rel="noreferrer">SEBI RA list <ExternalLink className="size-3" /></a>
+              <a className="link" href={SEBI_RA} target="_blank" rel="noreferrer">{t.sebiList} <ExternalLink className="size-3" /></a>
               <a className="link" href="https://cybercrime.gov.in" target="_blank" rel="noreferrer">cybercrime.gov.in <ExternalLink className="size-3" /></a>
               <a className="link" href="https://scores.sebi.gov.in" target="_blank" rel="noreferrer">SEBI SCORES <ExternalLink className="size-3" /></a>
             </div>
           </div>
 
           <p className="text-xs text-slate-400">
-            {t.analysedWith} <span className="font-mono">{report.model}</span> · {t.took} {Math.round(totalTime)}s
+            {t.analysedWith} <span className="font-mono">{report.model}</span> · {t.took} {Math.round(totalTime)}{t.seconds}
           </p>
         </aside>
       </div>

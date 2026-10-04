@@ -124,6 +124,6 @@ export interface ReportListItem {
 
 export type JobEvent =
   | { type: 'queued'; position: number }
-  | { type: 'progress'; stage: string; frac: number; msg: string }
+  | { type: 'progress'; stage: string; frac: number; msg: string; msg_hi?: string }
   | { type: 'done'; id: string }
   | { type: 'error'; msg: string }

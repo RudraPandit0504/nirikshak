@@ -39,8 +39,8 @@ def _emit(job: str, event: dict) -> None:
 
 
 def _run(job: str, target) -> None:
-    def progress(stage, frac, msg):
-        _emit(job, {"type": "progress", "stage": stage, "frac": round(frac, 3), "msg": msg})
+    def progress(stage, frac, msg, msg_hi=""):
+        _emit(job, {"type": "progress", "stage": stage, "frac": round(frac, 3), "msg": msg, "msg_hi": msg_hi or msg})
 
     try:
         report = run_audit(target, progress, job_id=job)

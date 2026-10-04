@@ -78,7 +78,7 @@ export default function App() {
               {meta && (
                 <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                   <span className="size-1.5 rounded-full bg-emerald-500" />
-                  {meta.model} · {meta.registry_size.toLocaleString('en-IN')} SEBI entities
+                  {meta.model} · {meta.registry_size.toLocaleString('en-IN')} {ctx.t.sebiEntities}
                 </span>
               )}
               <div className="flex rounded-lg border border-slate-200 dark:border-slate-800 p-0.5 text-sm">

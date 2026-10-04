@@ -8,6 +8,7 @@ from typing import Callable
 import httpx
 from rapidfuzz import fuzz
 
+from . import hindi
 from .categories import CATEGORIES
 from .config import HI_MODEL, LLM_MODEL, OLLAMA_URL, WINDOW_SECONDS
 from .models import Claim, Segment
@@ -245,16 +246,19 @@ def translate_hi(texts: list[str], batch: int = 6) -> list[str]:
     return out
 
 
+TRANSLATE_RULES = """
+
+Output: a JSON object {"hindi": [...]} with exactly one Hindi translation per numbered input, in the same order.
+No numbering, no English, no transliteration in brackets."""
+
+
 def _translate(texts: list[str]) -> list[str]:
     numbered = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(texts))
     data = _chat([
-        {"role": "system", "content": "Translate each numbered English sentence into simple, natural Hindi (Devanagari) "
-                                      "for a first-time investor. Keep terms like SEBI, stock, demat, Telegram, IPO in "
-                                      "English letters. Translate 'creator' as 'क्रिएटर' (never 'निर्माता'). Return a JSON array 'hindi' with exactly one translation per "
-                                      "input, same order, no numbering, no transliteration."},
+        {"role": "system", "content": hindi.STYLE + TRANSLATE_RULES},
         {"role": "user", "content": numbered},
     ], TRANSLATE_SCHEMA, num_predict=200 + 150 * len(texts), model=HI_MODEL)
-    return [t.strip() for t in data.get("hindi", [])]
+    return [hindi.tidy(t) for t in data.get("hindi", [])]
 
 
 def run(segments: list[Segment], hits: list[RuleHit], description: str, context: str,

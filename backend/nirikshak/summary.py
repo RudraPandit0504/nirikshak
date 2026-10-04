@@ -63,16 +63,16 @@ REGISTRATION = {
         "no_advice": " Registration only matters for creators who give buy/sell calls or promise returns, and this video does not.",
     },
     "hi": {
-        "verified": "क्रिएटर का SEBI रजिस्ट्रेशन ({entity}, {reg}) SEBI की आधिकारिक सूची में मिला{typo}।",
-        "number_not_found": "बताया गया रजिस्ट्रेशन नंबर ({nums}) SEBI की रिसर्च एनालिस्ट और निवेश सलाहकार सूची में मौजूद नहीं है।",
-        "claimed_unverified": "क्रिएटर SEBI-रजिस्टर्ड होने का दावा करता है, लेकिन जाँचने लायक कोई रजिस्ट्रेशन नंबर नहीं देता।",
-        "possible_match": "मिलते-जुलते नाम की एक SEBI-रजिस्टर्ड संस्था ({entity}) है, लेकिन यह पक्का नहीं हो सका कि यह यही क्रिएटर है।",
-        "not_registered": "'{channel}' के लिए रिसर्च एनालिस्ट या निवेश सलाहकार के रूप में कोई SEBI रजिस्ट्रेशन नहीं मिला।",
-        "unknown": "SEBI की सूची उपलब्ध नहीं थी, इसलिए रजिस्ट्रेशन नहीं जाँचा गया।",
-        "typo": " (वीडियो में लिखे नंबर में छोटा सा टाइपो है)",
-        "disc_yes": " जोखिम से जुड़ा डिस्क्लेमर मौजूद है।",
-        "disc_no": " वीडियो या उसके डिस्क्रिप्शन में कोई जोखिम डिस्क्लेमर नहीं मिला।",
-        "no_advice": " रजिस्ट्रेशन तभी मायने रखता है जब क्रिएटर खरीद/बिक्री की सलाह दे या रिटर्न का वादा करे, और यह वीडियो ऐसा नहीं करता।",
+        "verified": "क्रिएटर SEBI में रजिस्टर्ड है ({entity}, {reg}){typo}।",
+        "number_not_found": "वीडियो में बताया गया रजिस्ट्रेशन नंबर ({nums}) SEBI की रिसर्च एनालिस्ट और इन्वेस्टमेंट एडवाइज़र की सूची में है ही नहीं।",
+        "claimed_unverified": "क्रिएटर कहता है कि वह SEBI में रजिस्टर्ड है, लेकिन कोई रजिस्ट्रेशन नंबर नहीं बताता जिसे जाँचा जा सके।",
+        "possible_match": "SEBI की सूची में मिलता-जुलता एक नाम ({entity}) है, लेकिन यह पक्का नहीं हो सका कि यह यही क्रिएटर है।",
+        "not_registered": "'{channel}' SEBI में रिसर्च एनालिस्ट या इन्वेस्टमेंट एडवाइज़र के तौर पर रजिस्टर्ड नहीं मिला।",
+        "unknown": "SEBI की सूची उपलब्ध नहीं थी, इसलिए रजिस्ट्रेशन की जाँच नहीं हो सकी।",
+        "typo": " – वीडियो में नंबर थोड़ा गलत लिखा है",
+        "disc_yes": " वीडियो में जोखिम की चेतावनी (डिस्क्लेमर) दी गई है।",
+        "disc_no": " वीडियो या उसके डिस्क्रिप्शन में जोखिम की कोई चेतावनी (डिस्क्लेमर) नहीं है।",
+        "no_advice": " रजिस्ट्रेशन तभी ज़रूरी है जब कोई खरीदने-बेचने की टिप दे या रिटर्न का वादा करे, और यह वीडियो ऐसा नहीं करता।",
     },
 }
 
@@ -98,39 +98,39 @@ def registration_text(reg: RegistryCheck, channel: str, lang: str, advises: bool
 ADVICE = {
     "unregistered_tips": {
         "en": "Do not trade on the buy/sell calls in this video. Only SEBI-registered research analysts or investment advisers may give them.",
-        "hi": "इस वीडियो की खरीद/बिक्री की सलाह पर ट्रेड न करें। ऐसी सलाह केवल SEBI-रजिस्टर्ड रिसर्च एनालिस्ट या निवेश सलाहकार ही दे सकते हैं।",
+        "hi": "इस वीडियो की खरीदने-बेचने की टिप्स पर पैसा न लगाएँ। ऐसी टिप सिर्फ़ SEBI में रजिस्टर्ड रिसर्च एनालिस्ट या इन्वेस्टमेंट एडवाइज़र ही दे सकते हैं।",
     },
     "registered_tips": {
         "en": "The creator is registered, but a call made to a general audience is not personal advice. Check whether it suits your own goals and risk.",
-        "hi": "क्रिएटर रजिस्टर्ड है, लेकिन सबके लिए दी गई सलाह आपकी निजी सलाह नहीं है। देखें कि यह आपके लक्ष्य और जोखिम के हिसाब से ठीक है या नहीं।",
+        "hi": "क्रिएटर रजिस्टर्ड है, फिर भी सबके लिए दी गई टिप आपके लिए खास सलाह नहीं है। देखें कि यह आपके लक्ष्य और जोखिम उठाने की क्षमता के हिसाब से ठीक है या नहीं।",
     },
     "guaranteed_returns": {
         "en": "No market investment can guarantee returns. Treat any promise of fixed or 'sure' profit as a red flag.",
-        "hi": "बाज़ार का कोई भी निवेश रिटर्न की गारंटी नहीं दे सकता। पक्के या 'श्योर' मुनाफे के हर वादे को खतरे का संकेत मानें।",
+        "hi": "बाज़ार में कोई भी निवेश रिटर्न की गारंटी नहीं दे सकता। पक्के या 'श्योर' मुनाफे का हर वादा खतरे का संकेत है।",
     },
     "price_prediction": {
         "en": "Ignore confident price targets and 'multibagger' predictions. Nobody can reliably predict prices.",
-        "hi": "पक्के प्राइस टारगेट और 'मल्टीबैगर' भविष्यवाणियों को नज़रअंदाज़ करें। कीमतों का भरोसेमंद अनुमान कोई नहीं लगा सकता।",
+        "hi": "पक्के टारगेट प्राइस और 'मल्टीबैगर' जैसे दावों पर भरोसा न करें। शेयर का भाव कहाँ जाएगा, यह पक्के तौर पर कोई नहीं बता सकता।",
     },
     "paid_group": {
         "en": "Think twice before paying for any group, course or membership promoted here. Many tip scams start in paid Telegram or WhatsApp groups.",
-        "hi": "यहाँ प्रचारित किसी भी ग्रुप, कोर्स या मेंबरशिप के लिए पैसे देने से पहले सोचें। कई टिप-ठगी पेड टेलीग्राम या व्हाट्सऐप ग्रुप से शुरू होती हैं।",
+        "hi": "यहाँ बताए गए किसी भी ग्रुप, कोर्स या मेंबरशिप के लिए पैसे देने से पहले अच्छी तरह सोचें। टिप्स के नाम पर ज़्यादातर ठगी पेड टेलीग्राम या व्हाट्सऐप ग्रुप से ही शुरू होती है।",
     },
     "paid_promotion": {
         "en": "The creator may earn from the links or apps promoted here, so their recommendation may not be neutral.",
-        "hi": "क्रिएटर को यहाँ प्रचारित लिंक या ऐप से कमाई हो सकती है, इसलिए उनकी सलाह निष्पक्ष न भी हो।",
+        "hi": "यहाँ जिन लिंक या ऐप का प्रमोशन है, उनसे क्रिएटर को कमीशन मिल सकता है। इसलिए उनकी सलाह पूरी तरह निष्पक्ष न भी हो।",
     },
     "urgency_fomo": {
         "en": "Take your time. Pressure to act 'now' is a manipulation tactic; a genuine opportunity will still be there tomorrow.",
-        "hi": "जल्दबाज़ी न करें। 'अभी' कदम उठाने का दबाव एक चाल है; असली मौका कल भी रहेगा।",
+        "hi": "जल्दबाज़ी न करें। 'अभी पैसा लगाओ' का दबाव एक चाल है। सही मौका कल भी रहेगा।",
     },
     "fake_number": {
         "en": "A registration number that does not exist is a serious warning sign. Consider reporting the channel at cybercrime.gov.in or by calling 1930.",
-        "hi": "जो रजिस्ट्रेशन नंबर मौजूद ही नहीं, वह गंभीर खतरे का संकेत है। चैनल की शिकायत cybercrime.gov.in पर या 1930 पर कॉल करके करें।",
+        "hi": "जो रजिस्ट्रेशन नंबर है ही नहीं, वह गंभीर खतरे का संकेत है। चाहें तो cybercrime.gov.in पर या 1930 पर कॉल करके शिकायत करें।",
     },
     "clean": {
         "en": "No major warning signs were found. Still, verify anyone who gives investment advice on SEBI's website before acting on it.",
-        "hi": "कोई बड़ा खतरे का संकेत नहीं मिला। फिर भी, निवेश सलाह देने वाले किसी भी व्यक्ति को अमल से पहले SEBI वेबसाइट पर जाँचें।",
+        "hi": "कोई बड़ा खतरे का संकेत नहीं मिला। फिर भी, किसी की निवेश सलाह मानने से पहले SEBI की वेबसाइट पर उसका रजिस्ट्रेशन जाँच लें।",
     },
 }
 

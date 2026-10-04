@@ -16,6 +16,7 @@ def main() -> None:
 
     rs = sub.add_parser("resummarize", help="re-score and rewrite the summary of saved reports (no re-analysis)")
     rs.add_argument("ids", nargs="*", help="report ids (default: all)")
+    rs.add_argument("--retranslate", action="store_true", help="also redo all Hindi translations")
 
     s = sub.add_parser("serve", help="run the web API (and built frontend)")
     s.add_argument("--host", default="127.0.0.1")
@@ -26,7 +27,7 @@ def main() -> None:
     if args.cmd == "audit":
         from .pipeline import run_audit
 
-        def progress(stage, frac, msg):
+        def progress(stage, frac, msg, msg_hi=""):
             print(f"\r[{stage:<10}] {msg[:70]:<70}", end="" if frac < 1 else "\n", file=sys.stderr, flush=True)
 
         target = Path(args.target) if Path(args.target).exists() else args.target
@@ -51,7 +52,7 @@ def main() -> None:
 
         paths = [REPORTS_DIR / f"{i}.json" for i in args.ids] or sorted(REPORTS_DIR.glob("*.json"))
         for p in paths:
-            r = finalize(Report.model_validate_json(p.read_text(encoding="utf-8")))
+            r = finalize(Report.model_validate_json(p.read_text(encoding="utf-8")), retranslate=args.retranslate)
             save(r)
             for old in SPEECH_DIR.glob(f"{r.id}-*"):
                 old.unlink()  # cached audio of the old summary

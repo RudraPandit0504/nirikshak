@@ -110,6 +110,11 @@ The design choices that matter:
   Converting Latin words such as "SEBI" or "Telegram" to Devanagari before speaking stops the phonemizer from
   switching language mid-sentence, which cut Hindi errors by more than two thirds. Audio is generated on the CPU,
   cached as AAC, and pre-generated right after each audit.
+- **Hindi people actually speak.** Hindi text follows one style guide and glossary
+  ([`hindi.py`](backend/nirikshak/hindi.py)): everyday Hindi, common finance words kept as loanwords
+  (रिटर्न, ग्रुप, टिप), short sentences. Without it the translation model produced textbook calques
+  ("भुगतान किए गए समूह" for "paid group"). On 39 real report sentences, the style guide cut such stiff words
+  from 4.75 to 0.28 per 100 words ([`eval/translate_eval.py`](backend/eval/translate_eval.py)).
 - **Registry matching that resists typos.** Creators often mistype their own registration numbers. A quoted number
   that isn't in the registry is matched to registered numbers within 2 edits, but only accepted if it resolves to
   the channel's own registered name, because one typo can be close to several real registrations.
@@ -175,7 +180,7 @@ CLI:
 uv run nirikshak audit "https://www.youtube.com/watch?v=…"   # prints a report
 uv run nirikshak audit voice_note.opus -o report.json        # local file → Whisper
 uv run nirikshak sebi-sync                                   # refresh SEBI registry (~3 min)
-uv run nirikshak resummarize                                 # rebuild summaries of saved reports
+uv run nirikshak resummarize [--retranslate]                 # rebuild summaries (and Hindi) of saved reports
 uv run pytest                                                # unit tests (no GPU/network)
 ```
 

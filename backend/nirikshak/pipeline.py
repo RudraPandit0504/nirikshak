@@ -9,17 +9,18 @@ from pathlib import Path
 from typing import Callable
 
 from . import analyse, rules, sebi, summary
+from .categories import CATEGORIES
 from .config import HI_MODEL, LLM_MODEL, MAX_DURATION, REPORTS_DIR, WORK_DIR
 from .ingest import IngestError, fetch_youtube, probe_duration, to_wav
 from .models import Claim, RegistryCheck, Report, Source
 
-# Progress callback: (stage, fraction 0-1, message)
-Progress = Callable[[str, float, str], None]
+# Progress callback: (stage, fraction 0-1, English message, Hindi message)
+Progress = Callable[..., None]
 
 STAGES = ["fetch", "transcribe", "scan", "analyse", "registry", "summary"]
 
 
-def _noop(stage: str, frac: float, msg: str) -> None:
+def _noop(stage: str, frac: float, msg: str, msg_hi: str = "") -> None:
     pass
 
 
@@ -118,19 +119,26 @@ def registry_note(reg: RegistryCheck, channel: str) -> str:
     }[reg.verdict]
 
 
-def finalize(report: Report, progress: Callable[[float, str], None] = lambda f, m: None) -> Report:
+def finalize(report: Report, progress: Callable[..., None] = lambda f, m, h="": None,
+             retranslate: bool = False) -> Report:
     """Score the report, fill in Hindi explanations and write the structured summary.
     Used at the end of an audit, and by `nirikshak resummarize` to upgrade saved reports."""
     reg = report.registry
     # Re-apply current sanity checks (matters when upgrading reports made by older versions).
     report.claims = [c for c in report.claims if c.origin == "rules" or analyse._plausible(c.model_dump())]
+    if retranslate:
+        for c in report.claims:
+            if c.origin == "rules":  # keyword findings use the hand-written category text
+                c.why_en, c.why_hi = CATEGORIES[c.category]["about_en"], CATEGORIES[c.category]["about_hi"]
+            else:
+                c.why_hi = ""
     _explain_registration_claims(report.claims, reg)
     report.risk_score, report.risk_level = score(report.claims, reg)
-    progress(0.2, "Translating findings to Hindi")
+    progress(0.2, "Translating findings to Hindi", "नतीजों का हिंदी अनुवाद हो रहा है")
     need = [c for c in report.claims if not c.why_hi]
     for c, h in zip(need, analyse.translate_hi([c.why_en for c in need])):
         c.why_hi = h
-    progress(0.6, "Writing summary")
+    progress(0.6, "Writing summary", "सारांश लिखा जा रहा है")
     report.summary = summary.build(report.source, report.segments, report.claims, reg,
                                    report.risk_score, report.risk_level)
     report.summary_en = summary.flat(report.summary["en"])
@@ -158,7 +166,7 @@ def run_audit(target: str | Path, progress: Progress = _noop, job_id: str | None
 
     try:
         # 1. Ingest
-        progress("fetch", 0, "Fetching video details")
+        progress("fetch", 0, "Fetching video details", "वीडियो की जानकारी ली जा रही है")
         if isinstance(target, Path) or Path(str(target)).exists():
             path = Path(target)
             dur = probe_duration(path)
@@ -168,54 +176,58 @@ def run_audit(target: str | Path, progress: Progress = _noop, job_id: str | None
             segments, audio = None, to_wav(path, work)
         else:
             source, segments, audio = fetch_youtube(str(target), work, want_audio=force_whisper)
-        progress("fetch", 1, source.title or "Fetched")
+        progress("fetch", 1, source.title or "Fetched", source.title or "जानकारी मिल गई")
         lap("fetch")
 
         # 2. Transcript
         if segments is None:
             from .transcribe import transcribe  # heavy import, only when needed
 
-            progress("transcribe", 0, "Transcribing audio with Whisper")
+            progress("transcribe", 0, "Transcribing audio with Whisper", "Whisper से आवाज़ को टेक्स्ट में बदला जा रहा है")
             analyse.unload_models()
-            segments, lang = transcribe(audio, lambda f: progress("transcribe", f, f"Transcribing… {int(f * 100)}%"))
+            segments, lang = transcribe(audio, lambda f: progress("transcribe", f, f"Transcribing… {int(f * 100)}%",
+                                                                  f"टेक्स्ट बन रहा है… {int(f * 100)}%"))
             source.language, source.transcript_source = lang, "whisper"
             if not source.duration and segments:
                 source.duration = segments[-1].end
-        progress("transcribe", 1, f"{len(segments)} transcript lines ({source.transcript_source})")
+        src_hi = "Whisper" if source.transcript_source == "whisper" else "YouTube कैप्शन"
+        progress("transcribe", 1, f"{len(segments)} transcript lines ({source.transcript_source})",
+                 f"ट्रांसक्रिप्ट की {len(segments)} लाइनें ({src_hi})")
         lap("transcribe")
         if not segments:
             raise IngestError("No speech found in this video.")
 
         # 3. Rules
         hits = rules.scan_segments(segments) + rules.scan_text(source.description)
-        progress("scan", 1, f"{len(hits)} keyword hints")
+        progress("scan", 1, f"{len(hits)} keyword hints", f"{len(hits)} कीवर्ड संकेत मिले")
         lap("scan")
 
         # 4. LLM
         context = f'"{source.title}" by {source.channel or "unknown"}'
         claims = analyse.run(
             segments, hits, source.description, context,
-            on_progress=lambda n, total: progress("analyse", n / total, f"Analysing part {n}/{total}"),
+            on_progress=lambda n, total: progress("analyse", n / total, f"Analysing part {n}/{total}",
+                                                  f"हिस्सा {n}/{total} जाँचा जा रहा है"),
         )
         lap("analyse")
 
         # 5. Registry
-        progress("registry", 0, "Checking SEBI registry")
+        progress("registry", 0, "Checking SEBI registry", "SEBI की सूची में जाँच हो रही है")
         transcript = " ".join(s.text for s in segments)
         reg = check_registry(source, claims, transcript)
-        progress("registry", 1, registry_note(reg, source.channel))
+        progress("registry", 1, registry_note(reg, source.channel), summary.registration_text(reg, source.channel, "hi"))
         lap("registry")
 
         # 6. Score + summary
-        progress("summary", 0, "Writing summary")
+        progress("summary", 0, "Writing summary", "सारांश लिखा जा रहा है")
         report = Report(
             id=job_id, created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             source=source, segments=segments, claims=claims, registry=reg,
             risk_score=0, risk_level="low", summary_en="", summary_hi="",
             model=f"{LLM_MODEL} + {HI_MODEL}", timings=timings,
         )
-        finalize(report, lambda f, m: progress("summary", f, m))
-        progress("summary", 1, "Done")
+        finalize(report, lambda f, m, h="": progress("summary", f, m, h))
+        progress("summary", 1, "Done", "पूरा हुआ")
         lap("summary")
 
         save(report)

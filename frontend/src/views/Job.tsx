@@ -9,10 +9,10 @@ const STAGES = ['fetch', 'transcribe', 'scan', 'analyse', 'registry', 'summary']
 type Stage = (typeof STAGES)[number]
 
 export default function Job({ id }: { id: string }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [stage, setStage] = useState<Stage | null>(null)
   const [frac, setFrac] = useState(0)
-  const [msgs, setMsgs] = useState<Partial<Record<Stage, string>>>({})
+  const [msgs, setMsgs] = useState<Partial<Record<Stage, { en: string; hi: string }>>>({})
   const [queued, setQueued] = useState(false)
   const [error, setError] = useState('')
 
@@ -24,7 +24,7 @@ export default function Job({ id }: { id: string }) {
           setQueued(false)
           setStage(ev.stage as Stage)
           setFrac(ev.frac)
-          setMsgs((m) => ({ ...m, [ev.stage]: ev.msg }))
+          setMsgs((m) => ({ ...m, [ev.stage]: { en: ev.msg, hi: ev.msg_hi ?? ev.msg } }))
         } else if (ev.type === 'done') go(`/report/${ev.id}`)
         else if (ev.type === 'error') setError(ev.msg)
       }),
@@ -58,7 +58,7 @@ export default function Job({ id }: { id: string }) {
               </span>
               <div className="min-w-0">
                 <p className={`font-medium ${!done && !active ? 'text-slate-400' : ''}`}>{t[`stage_${s}` as keyof Strings] as string}</p>
-                {msgs[s] && <p className="text-sm text-slate-500 truncate">{msgs[s]}</p>}
+                {msgs[s] && <p className="text-sm text-slate-500 truncate">{msgs[s][lang]}</p>}
               </div>
             </li>
           )
