@@ -18,8 +18,8 @@
   --animate-drift-3: drift3 40s ease-in-out infinite alternate;
 
   @keyframes enter {
-    from { opacity: 0; transform: translateY(10px) scale(.985); filter: blur(4px); }
-    to { opacity: 1; transform: none; filter: none; }
+    from { opacity: 0; transform: translateY(10px) scale(.985); }
+    to { opacity: 1; transform: none; }
   }
   @keyframes drift1 { to { transform: translate(12vw, 8vh) scale(1.15); } }
   @keyframes drift2 { to { transform: translate(-10vw, 12vh) scale(.9); } }
@@ -82,6 +82,17 @@ body {
 ::selection { background: color-mix(in oklab, var(--accent) 35%, transparent); }
 
 /* ---------- Glass system ---------- */
+@layer base {
+  /* Grid and flex children may shrink below their content (long names truncate instead of widening the page). */
+  .grid > * { min-width: 0; }
+}
+
+/* Phones: lighter glass (backdrop blur is the most expensive effect on mobile GPUs). */
+@media (max-width: 640px) {
+  .glass, .glass-strong { -webkit-backdrop-filter: blur(10px) saturate(160%) !important; backdrop-filter: blur(10px) saturate(160%) !important; }
+  .glass-pill { -webkit-backdrop-filter: blur(8px) saturate(160%) !important; backdrop-filter: blur(8px) saturate(160%) !important; }
+}
+
 @layer components {
   .glass, .glass-strong, .glass-pill, .glass-inset {
     position: relative;
@@ -89,8 +100,8 @@ body {
   }
   .glass, .glass-strong {
     background: var(--glass);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(170%);
+    backdrop-filter: blur(16px) saturate(170%);
     border-radius: 28px;
     box-shadow: var(--inner), var(--shadow);
   }
@@ -111,8 +122,8 @@ body {
   }
   .glass-pill {
     background: var(--glass);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(170%);
+    backdrop-filter: blur(12px) saturate(170%);
     border-radius: 999px;
     box-shadow: var(--inner), 0 6px 20px -10px rgba(15, 23, 42, .25);
   }

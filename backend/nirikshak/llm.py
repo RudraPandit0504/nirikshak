@@ -67,7 +67,11 @@ def model_label() -> str:
     if PROVIDER != "cloud":
         return f"{LLM_MODEL} + {HI_MODEL}"
     avail = _available()
-    return " → ".join(f"{c[3][0]}" for c in avail) if avail else "no API key set"
+    if not avail:
+        return "no API key set"
+    # Short label for the header badge: the first model, without provider prefixes or versions.
+    m = avail[0][3][0].split("/")[-1].removeprefix("openai.").split(":")[0].removesuffix("-1")
+    return f"{m} · {avail[0][0].capitalize()}"
 
 
 # ---------------- Ollama ----------------

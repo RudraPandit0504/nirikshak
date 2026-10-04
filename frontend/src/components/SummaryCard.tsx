@@ -63,7 +63,7 @@ export function ReportHero({ report, meta, actions }: { report: Report; meta: Re
 
   return (
     <Glass strong className="overflow-hidden p-6 sm:p-8">
-      <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full blur-3xl opacity-25" style={{ background: color }} />
+      <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full opacity-25" style={{ background: `radial-gradient(closest-side, ${color}, transparent)` }} />
       <div className="relative flex flex-col gap-7 md:flex-row md:items-center">
         <RiskGauge level={report.risk_level} score={report.risk_score} />
         <div className="min-w-0 flex-1">

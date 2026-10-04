@@ -27,7 +27,7 @@ export function RiskGauge({ level, score, size = 168 }: { level: Level; score: n
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <div className="glass absolute inset-0 rounded-full" style={{ borderRadius: '9999px' }} />
-      <div className="absolute inset-3 rounded-full blur-2xl opacity-40" style={{ background: color }} />
+      <div className="absolute -inset-3 rounded-full opacity-40" style={{ background: `radial-gradient(closest-side, ${color}, transparent)` }} />
       <svg viewBox="0 0 128 128" className="absolute inset-0 -rotate-[230deg]">
         <circle cx="64" cy="64" r={r} fill="none" strokeWidth="9" strokeLinecap="round"
           stroke="var(--hairline)" strokeDasharray={`${arc} ${c}`} />

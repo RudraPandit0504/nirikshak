@@ -146,7 +146,7 @@ export default function Home({ hosted = false }: { hosted?: boolean }) {
           <h2 className="display mb-5 text-2xl sm:text-3xl">{t.recentCreators}</h2>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {profiles.map((p) => (
-              <a key={p.id} href={`#/profile/${p.id}`} className="glass glass-hover group block p-5">
+              <a key={p.id} href={`#/profile/${p.id}`} className="glass glass-hover group block min-w-0 p-5">
                 <div className="flex -space-x-3">
                   {p.thumbs.map((v) => (
                     <img key={v} src={`https://i.ytimg.com/vi/${v}/default.jpg`} alt="" loading="lazy"
@@ -154,7 +154,7 @@ export default function Home({ hosted = false }: { hosted?: boolean }) {
                   ))}
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-3">
-                  <p className="display truncate text-lg">{p.channel}</p>
+                  <p className="display min-w-0 truncate text-lg">{p.channel}</p>
                   <RiskPill level={p.level} score={Math.round(p.median_risk)} />
                 </div>
                 <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-2" lang={lang}>{p.headline[lang]}</p>

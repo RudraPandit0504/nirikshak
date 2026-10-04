@@ -57,8 +57,8 @@ export default function Job({ id }: { id: string }) {
         <div className="flex flex-col items-center text-center">
           {/* Progress ring */}
           <div className="relative size-40">
-            <div className="absolute inset-4 rounded-full blur-2xl opacity-50"
-              style={{ background: error ? '#ff3b30' : 'linear-gradient(135deg,#ff9500,#c644fc)' }} />
+            <div className="absolute -inset-2 rounded-full opacity-50"
+              style={{ background: `radial-gradient(closest-side, ${error ? '#ff3b30' : '#ff7a3d'}, transparent)` }} />
             <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90">
               <defs>
                 <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
@@ -95,7 +95,7 @@ export default function Job({ id }: { id: string }) {
             const Icon = ICONS[s]
             return (
               <li key={s}
-                className={`flex items-center gap-3.5 rounded-2xl px-3.5 py-3 transition-all duration-500 ${active ? 'glass-inset' : ''}`}>
+                className={`flex min-w-0 items-center gap-3.5 rounded-2xl px-3.5 py-3 transition-all duration-500 ${active ? 'glass-inset' : ''}`}>
                 <span className={`grid size-9 shrink-0 place-items-center rounded-full transition-all duration-500 ${
                   done ? 'bg-[#34c759] text-white shadow-[0_4px_14px_-4px_#34c759]'
                     : active ? 'bg-[linear-gradient(135deg,#ff9500,#ff5e3a)] text-white shadow-[0_4px_14px_-4px_#ff5e3a]'
@@ -107,7 +107,7 @@ export default function Job({ id }: { id: string }) {
                   <p className={`font-semibold ${!done && !active ? 'text-ink-3' : 'text-ink'}`}>{t[`stage_${s}` as keyof Strings] as string}</p>
                   {msgs[s] && <p className="truncate text-[13px] text-ink-3">{msgs[s]![lang]}</p>}
                 </div>
-                {done && <span className="text-xs font-medium text-[#34c759]">{t.stepsDone}</span>}
+                {done && <span className="shrink-0 text-xs font-medium text-[#34c759]">{t.stepsDone}</span>}
               </li>
             )
           })}
