@@ -16,7 +16,7 @@ explained in English or Hindi, with a natural voice.
 
 No cloud AI is used, no API keys are needed and no data leaves your machine.
 
-**Live demo:** https://13-233-152-160.sslip.io (hosted on AWS; this public version uses cloud AI, see [below](#hosted-demo)).
+**Live demo:** https://nirikshak-app.duckdns.org (hosted on AWS; this public version uses cloud AI, see [below](#hosted-demo)).
 
 <img src="docs/report.png" alt="Audit report: risk score, timestamped findings, SEBI registry check" width="900">
 
