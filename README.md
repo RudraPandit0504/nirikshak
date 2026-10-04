@@ -2,12 +2,17 @@
 
 # Nirikshak · निरीक्षक
 
-**A local-first AI auditor for finance-influencer videos.**
+**A local-first AI auditor for finance videos, forwarded "tips" and the creators behind them.**
 
-Paste a YouTube link (or upload a video or a WhatsApp voice note). Nirikshak transcribes it and finds
-guaranteed-return promises, buy/sell calls, hype, FOMO and hidden paid promotions, with timestamps.
-It also checks the creator against **SEBI's live registry of Research Analysts and Investment Advisers**,
-and explains everything in English or Hindi.
+- **Audit a video:** paste a YouTube link (or upload a video or voice note). Nirikshak finds guaranteed-return
+  promises, buy/sell calls, hype, FOMO and hidden paid promotions, with timestamps.
+- **Check a WhatsApp message:** paste a forwarded tip or drop a screenshot. It flags OTP requests, fake KYC
+  alerts, payment demands, suspicious links and fake regulators.
+- **Profile a creator:** audit a channel's recent videos and see how often they give tips or promise returns.
+- **Ask questions:** chat with any audited video or message in English or Hindi, with clickable evidence.
+
+Everyone and every number is checked against **SEBI's public registers** (6,600+ entities), and everything is
+explained in English or Hindi, with a natural voice.
 
 No cloud AI is used, no API keys are needed and no data leaves your machine.
 
@@ -43,6 +48,9 @@ Built for **SANGYAN 2026** (SNTC IIT (BHU) × SEBI × NSDL), Track E: *Misinform
 | 🖨️ **PDF report** | A complete A4 report: video details, summary, registry check, every finding with timestamp links, methodology, and the full transcript as an appendix. |
 | 🎙️ **Voice notes too** | Upload a forwarded WhatsApp voice note or video. Whisper transcribes it on your GPU. |
 | 📊 **Risk score** | A 0–100 score, built so that one repeated phrase can't dominate but several different kinds of red flag add up. |
+| 💬 **Ask the video** | Chat about any audited video or message, typed or spoken (Hindi/English). Answers cite the exact moments; buy/sell or "will it go up?" questions are refused and redirected to the facts and registration status. |
+| 📱 **WhatsApp tip checker** | Paste a forwarded message or drop a screenshot (read by a local vision model). Flags OTP/PIN requests, APKs and short links, UPI payment demands, fake KYC alerts and impersonation, e.g. a message using Zerodha's name but linking to `zerodha-kyc-update.in`. |
+| 👤 **Creator trust profile** | Audits a channel's latest uploads (reusing existing audits) and shows how often each red flag appears, risk across videos, the worst moments and registration status. |
 | 🔒 **Private by design** | Everything runs locally. Only YouTube and SEBI's public website are contacted. |
 
 ## Screenshots
@@ -159,6 +167,26 @@ Qwen 2.5 had the fewest false alarms on clean snippets (1/6, against 3/6 and 4/6
 \*RTX 4050 Laptop (6 GB). qwen3:8b doesn't fit fully in 6 GB of VRAM and partly runs on the CPU, which explains
 its latency. †Last re-run happened while read-aloud audio was being generated on the CPU; unloaded it was 4.5 s. Raw numbers are in [`backend/eval/results.json`](backend/eval/results.json).
 
+### Forwarded-message checker
+
+Same method on WhatsApp/Telegram/SMS-style messages ([`messages.jsonl`](backend/eval/messages.jsonl) dev set
+of 16, [`messages_heldout.jsonl`](backend/eval/messages_heldout.jsonl) of 10 written before tuning). Clean
+messages include a family chat, a genuine bank OTP SMS, market news and a real broker notice.
+
+| System | Dev F1 | **Held-out** P / R / **F1** | False alarms on clean (held-out) |
+|---|---|---|---|
+| Keyword rules only | 0.84 | 1.00 / 0.62 / 0.76 | 0 / 4 |
+| **qwen2.5:7b + rules + domain check** | 0.88 | **1.00 / 0.92 / 0.96** | **0 / 4** |
+
+The one remaining dev-set false alarm is a news line mentioning the RBI, flagged as impersonation.
+
+### Ask the video
+
+Checked by hand on 12 questions across 4 real reports (English and Hindi videos). After fixes, all factual
+questions were answered with correct, clickable evidence (e.g. the "*I can guarantee it can reach 10 cents*"
+moment at 6:59), the two "should I buy / will it double" questions were refused, and concept questions
+("what is a stop-loss?") got labelled general explanations. Typical answer time is 10–20 s on the RTX 4050.
+
 The rules-only baseline is precise but misses most real claims on unseen phrasing. The LLM layer is what
 generalises. The sets are small and written by the author, so treat the numbers as a sanity check, not a
 benchmark. More real labelled data is the most useful next step.
@@ -193,6 +221,7 @@ CLI:
 uv run nirikshak audit "https://www.youtube.com/watch?v=…"   # prints a report
 uv run nirikshak audit voice_note.opus -o report.json        # local file → Whisper
 uv run nirikshak sebi-sync                                   # refresh SEBI registry (~3 min)
+uv run nirikshak profile https://www.youtube.com/@channel -n 8   # creator trust profile
 uv run nirikshak resummarize [--retranslate] [--recheck]     # rebuild summaries / Hindi / SEBI check of saved reports
 uv run pytest                                                # unit tests (no GPU/network)
 ```
@@ -220,7 +249,9 @@ backend/nirikshak/
   rules.py        multilingual lexical rules, disclaimer + registration-number detection
   analyse.py      windowing, LLM extraction, grounding, merge, summary, Hindi translation
   sebi.py         SEBI register mirror (5 lists), number / name / domain lookup
-  identity.py     who is behind a video: numbers, names, guests, websites → verdict
+  identity.py     who is behind a video: numbers, names, guests, websites → verdict; impersonation check
+  qa.py           Ask the video: question planning, BM25 retrieval, grounded answers, advice refusal
+  profile.py      creator trust profile: recent uploads → aggregated pattern
   pipeline.py     orchestration, registry verdict, scoring
   summary.py      structured brief (headline/overview by LLM, the rest from findings)
   tts.py          Kokoro read-aloud, speech-text normalisation, audio cache

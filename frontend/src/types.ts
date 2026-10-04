@@ -143,8 +143,8 @@ export interface ReportListItem {
 
 export type JobEvent =
   | { type: 'queued'; position: number }
-  | { type: 'progress'; stage: string; frac: number; msg: string; msg_hi?: string }
-  | { type: 'done'; id: string }
+  | { type: 'progress'; stage: string; frac: number; msg: string; msg_hi?: string; video?: number; videos?: number; title?: string }
+  | { type: 'done'; id: string; kind?: 'report' | 'profile' }
   | { type: 'error'; msg: string }
 
 export interface AskAnswer {
@@ -152,4 +152,56 @@ export interface AskAnswer {
   answer_en: string
   kind: 'video' | 'general' | 'refused'
   citations: { line: number; start: number; quote: string }[]
+}
+
+export interface ProfileVideo {
+  report_id: string
+  video_id: string
+  title: string
+  position: number
+  upload_date: string | null
+  risk_score: number
+  risk_level: 'low' | 'medium' | 'high'
+  categories: Category[]
+  verdict: Verdict
+  disclaimer: boolean
+}
+
+export interface WorstMoment {
+  report_id: string
+  video_title: string
+  start: number
+  category: Category
+  severity: number
+  quote: string
+  why_en: string
+  why_hi: string
+}
+
+export interface Profile {
+  id: string
+  channel: string
+  channel_url: string
+  created_at: string
+  videos: ProfileVideo[]
+  category_videos: Partial<Record<Category, number>>
+  avg_risk: number
+  median_risk: number
+  max_risk: number
+  level: 'low' | 'medium' | 'high'
+  disclaimer_rate: number
+  registry: RegistryCheck
+  worst: WorstMoment[]
+  headline: Record<Lang, string>
+}
+
+export interface ProfileListItem {
+  id: string
+  channel: string
+  videos: number
+  level: 'low' | 'medium' | 'high'
+  median_risk: number
+  thumbs: string[]
+  headline: Record<Lang, string>
+  created_at: string
 }

@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import qa, sebi, tts
+from . import llm, qa, sebi, tts
 from .analyse import LLMError
 from .categories import CATEGORIES
 from .config import DATA_DIR, LLM_MODEL, REPORTS_DIR, WORK_DIR
@@ -40,13 +40,16 @@ def _emit(job: str, event: dict) -> None:
 
 
 def _run(job: str, target, runner=None) -> None:
-    def progress(stage, frac, msg, msg_hi=""):
-        _emit(job, {"type": "progress", "stage": stage, "frac": round(frac, 3), "msg": msg, "msg_hi": msg_hi or msg})
+    def progress(stage, frac, msg, msg_hi="", **extra):
+        _emit(job, {"type": "progress", "stage": stage, "frac": round(frac, 3), "msg": msg, "msg_hi": msg_hi or msg, **extra})
 
     try:
-        report = runner(progress, job) if runner else run_audit(target, progress, job_id=job)
-        _emit(job, {"type": "done", "id": report.id})
-        tts.prewarm(report)
+        result = runner(progress, job) if runner else run_audit(target, progress, job_id=job)
+        if isinstance(result, Report):
+            _emit(job, {"type": "done", "id": result.id, "kind": "report"})
+            tts.prewarm(result)
+        else:
+            _emit(job, {"type": "done", "id": result.id, "kind": "profile"})
     except (IngestError, LLMError) as e:
         _emit(job, {"type": "error", "msg": str(e)})
     except Exception as e:  # noqa: BLE001 - surface anything to the UI
@@ -66,7 +69,7 @@ def _start(target, runner=None) -> dict:
 
 @app.get("/api/meta")
 def meta():
-    return {"model": LLM_MODEL, "stages": STAGES, "categories": CATEGORIES, "registry_size": sebi.registry_size()}
+    return {"model": llm.model_label(), "provider": llm.PROVIDER, "stages": STAGES, "categories": CATEGORIES, "registry_size": sebi.registry_size()}
 
 
 @app.post("/api/audit")
@@ -109,6 +112,36 @@ async def check_message(text: str = Form(""), save: bool = Form(True), image: Up
         raise HTTPException(400, "Paste a message or attach a screenshot.")
     return _start(None, lambda progress, job: run_message_audit(
         text=text if path is None else None, image=path, progress=progress, job_id=job, private=not save))
+
+
+@app.post("/api/profile")
+def profile_start(url: str = Form(...), n: int = Form(8)):
+    """Audit a channel's recent videos (reusing existing reports) and build a trust profile."""
+    from .profile import run_profile
+
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(400, "Paste a YouTube channel link or any video link from that channel.")
+    n = max(3, min(15, n))
+    return _start(None, lambda progress, job: run_profile(url, n, progress))
+
+
+@app.get("/api/profiles")
+def profiles_list():
+    from .profile import list_profiles
+
+    return list_profiles()
+
+
+@app.get("/api/profiles/{pid}")
+def profile_get(pid: str):
+    from .profile import PROFILES_DIR
+
+    if not all(ch.isalnum() or ch in "-_" for ch in pid):
+        raise HTTPException(400, "Bad id")
+    p = PROFILES_DIR / f"{pid}.json"
+    if not p.exists():
+        raise HTTPException(404, "Profile not found")
+    return FileResponse(p, media_type="application/json")
 
 
 @app.delete("/api/reports/{rid}")

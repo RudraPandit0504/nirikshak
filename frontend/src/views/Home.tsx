@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, AudioLines, Clock, FileAudio, Languages, Link2, Loader2, Lock, MessageSquareWarning, ShieldCheck, Upload, MonitorPlay } from 'lucide-react'
-import { listReports, startUpload, startUrl } from '../api'
+import { ArrowRight, AudioLines, Clock, FileAudio, Languages, Link2, Loader2, Lock, MessageSquareWarning, ShieldCheck, Upload, MonitorPlay, UserSearch } from 'lucide-react'
+import { isChannelUrl, listProfiles, listReports, startProfile, startUpload, startUrl } from '../api'
 import { go } from '../ui'
 import { useLang } from '../i18n'
-import type { ReportListItem } from '../types'
+import type { ProfileListItem, ReportListItem } from '../types'
 import { RiskPill } from '../components/Risk'
 import Glass from '../components/ui/Glass'
 import { Button } from '../components/ui/Button'
@@ -12,7 +12,9 @@ import MessageForm from '../components/MessageForm'
 
 export default function Home() {
   const { t, lang } = useLang()
-  const [mode, setMode] = useState<'video' | 'message'>(() => (window.location.hash.includes('message') ? 'message' : 'video'))
+  const [mode, setMode] = useState<'video' | 'message' | 'creator'>('video')
+  const [count, setCount] = useState<'5' | '8' | '12'>('8')
+  const [profiles, setProfiles] = useState<ProfileListItem[]>([])
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -21,6 +23,7 @@ export default function Home() {
 
   useEffect(() => {
     listReports().then(setRecent).catch(() => setRecent([]))
+    listProfiles().then(setProfiles).catch(() => setProfiles([]))
   }, [])
 
   const run = async (start: () => Promise<{ job: string }>) => {
@@ -37,7 +40,11 @@ export default function Home() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (url.trim()) run(() => startUrl(url.trim()))
+    const u = url.trim()
+    if (!u) return
+    // A channel link (or Creator mode) builds a profile; a video link audits that video.
+    if (mode === 'creator' || isChannelUrl(u)) run(() => startProfile(u, Number(count)))
+    else run(() => startUrl(u))
   }
 
   const features = [
@@ -59,16 +66,17 @@ export default function Home() {
           <br />
           <span className="accent-gradient">{t.heroTitleB}</span>
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-[clamp(1rem,1.6vw,1.15rem)] leading-relaxed text-ink-2">{mode === 'message' ? t.msgHeroSub : t.heroSub}</p>
+        <p className="mx-auto mt-6 max-w-2xl text-[clamp(1rem,1.6vw,1.15rem)] leading-relaxed text-ink-2">{mode === 'message' ? t.msgHeroSub : mode === 'creator' ? t.creatorHeroSub : t.heroSub}</p>
 
         <Segmented
-          className="mx-auto mt-10 w-full max-w-sm"
+          className="mx-auto mt-10 w-full max-w-lg"
           value={mode}
           onChange={setMode}
           label="Mode"
           options={[
             { value: 'video', label: <><MonitorPlay className="size-4" /> {t.modeVideo}</> },
             { value: 'message', label: <><MessageSquareWarning className="size-4" /> {t.modeMessage}</> },
+            { value: 'creator', label: <><UserSearch className="size-4" /> {t.modeCreator}</> },
           ]}
         />
 
@@ -79,17 +87,24 @@ export default function Home() {
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder={t.urlPlaceholder}
+            placeholder={mode === 'creator' ? t.creatorPlaceholder : t.urlPlaceholder}
             inputMode="url"
             aria-label={t.urlPlaceholder}
             className="min-w-0 flex-1 bg-transparent py-3 text-base text-ink outline-none placeholder:text-ink-3"
           />
           <Button variant="primary" size="lg" disabled={busy} className="shrink-0 px-6!">
             {busy ? <Loader2 className="size-5 animate-spin" /> : <ArrowRight className="size-5" />}
-            <span className="hidden sm:inline">{t.audit}</span>
+            <span className="hidden sm:inline">{mode === 'creator' ? t.creatorStart : t.audit}</span>
           </Button>
         </form>
 
+        {mode === 'creator' ? (
+          <div className="mt-5 flex items-center justify-center gap-3 text-sm text-ink-3">
+            <span>{t.creatorCount}</span>
+            <Segmented size="sm" value={count} onChange={setCount} label={t.creatorCount}
+              options={[{ value: '5', label: '5' }, { value: '8', label: '8' }, { value: '12', label: '12' }]} className="w-40" />
+          </div>
+        ) : (
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm text-ink-3">
           <span>{t.or}</span>
           <Button type="button" size="sm" onClick={() => fileRef.current?.click()} disabled={busy}>
@@ -99,6 +114,7 @@ export default function Home() {
           <input ref={fileRef} type="file" accept="audio/*,video/*,.opus,.ogg,.m4a" className="hidden"
             onChange={(e) => e.target.files?.[0] && run(() => startUpload(e.target.files![0]))} />
         </div>
+        )}
         </>)}
 
         {err && (
@@ -123,6 +139,30 @@ export default function Home() {
           </Glass>
         ))}
       </section>
+
+      {/* Creator profiles */}
+      {profiles.length > 0 && (
+        <section className="mt-16">
+          <h2 className="display mb-5 text-2xl sm:text-3xl">{t.recentCreators}</h2>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {profiles.map((p) => (
+              <a key={p.id} href={`#/profile/${p.id}`} className="glass glass-hover group block p-5">
+                <div className="flex -space-x-3">
+                  {p.thumbs.map((v) => (
+                    <img key={v} src={`https://i.ytimg.com/vi/${v}/default.jpg`} alt="" loading="lazy"
+                      className="size-12 rounded-full object-cover ring-2 ring-[var(--glass-strong)]" />
+                  ))}
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className="display truncate text-lg">{p.channel}</p>
+                  <RiskPill level={p.level} score={Math.round(p.median_risk)} />
+                </div>
+                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-2" lang={lang}>{p.headline[lang]}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Recent audits */}
       <section className="mt-16">

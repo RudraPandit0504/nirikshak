@@ -9,13 +9,15 @@ import { useTheme, type ThemePref } from './components/ui/theme'
 import Home from './views/Home'
 import Job from './views/Job'
 import ReportView from './views/ReportView'
+import ProfileView from './views/ProfileView'
 
-type Route = { name: 'home' } | { name: 'job'; id: string } | { name: 'report'; id: string }
+type Route = { name: 'home' } | { name: 'job'; id: string } | { name: 'report'; id: string; t?: number } | { name: 'profile'; id: string }
 
 function parse(hash: string): Route {
-  const [, kind, id] = hash.replace(/^#/, '').split('/')
+  const [, kind, id, sub, val] = hash.replace(/^#/, '').split('/')
   if (kind === 'job' && id) return { name: 'job', id }
-  if (kind === 'report' && id) return { name: 'report', id }
+  if (kind === 'report' && id) return { name: 'report', id, t: sub === 't' && val ? Number(val) : undefined }
+  if (kind === 'profile' && id) return { name: 'profile', id }
   return { name: 'home' }
 }
 
@@ -120,7 +122,8 @@ export default function App() {
         <main key={route.name + ('id' in route ? route.id : '')} className="flex-1 animate-enter">
           {route.name === 'home' && <Home />}
           {route.name === 'job' && <Job id={route.id} />}
-          {route.name === 'report' && <ReportView id={route.id} meta={meta} />}
+          {route.name === 'report' && <ReportView id={route.id} meta={meta} startAt={route.t} />}
+          {route.name === 'profile' && <ProfileView id={route.id} meta={meta} />}
         </main>
 
         <footer className="no-print px-4 pb-8 pt-12">

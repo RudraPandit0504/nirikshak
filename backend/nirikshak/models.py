@@ -36,6 +36,8 @@ class Source(BaseModel):
     duration: float = 0
     language: str | None = None
     transcript_source: Literal["captions", "whisper"] | None = None
+    channel_id: str | None = None
+    upload_date: str | None = None  # YYYYMMDD
 
 
 class Claim(BaseModel):
@@ -116,3 +118,44 @@ class Report(BaseModel):
     private: bool = False  # message checks the user chose not to keep in history
     model: str
     timings: dict[str, float]
+
+
+class ProfileVideo(BaseModel):
+    report_id: str
+    video_id: str
+    title: str
+    position: int  # 0 = newest upload in the profile
+    upload_date: str | None = None
+    risk_score: int
+    risk_level: Literal["low", "medium", "high"]
+    categories: list[Category]
+    verdict: str
+    disclaimer: bool
+
+
+class WorstMoment(BaseModel):
+    report_id: str
+    video_title: str
+    start: float
+    category: Category
+    severity: int
+    quote: str
+    why_en: str
+    why_hi: str
+
+
+class Profile(BaseModel):
+    id: str  # channel id
+    channel: str
+    channel_url: str
+    created_at: str
+    videos: list[ProfileVideo]
+    category_videos: dict[str, int]  # category -> number of videos with a strong finding of it
+    avg_risk: float
+    median_risk: float
+    max_risk: int
+    level: Literal["low", "medium", "high"]
+    disclaimer_rate: float
+    registry: "RegistryCheck"
+    worst: list[WorstMoment]
+    headline: dict[str, str]  # {"en": …, "hi": …}

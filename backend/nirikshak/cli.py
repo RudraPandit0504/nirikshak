@@ -19,6 +19,10 @@ def main() -> None:
     rs.add_argument("--retranslate", action="store_true", help="also redo all Hindi translations")
     rs.add_argument("--recheck", action="store_true", help="also re-check SEBI registration (after sebi-sync)")
 
+    pr = sub.add_parser("profile", help="audit a channel's recent videos and build a trust profile")
+    pr.add_argument("url", help="channel link (youtube.com/@name) or any video link from the channel")
+    pr.add_argument("-n", type=int, default=8, help="number of recent videos (default 8)")
+
     s = sub.add_parser("serve", help="run the web API (and built frontend)")
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8000)
@@ -45,6 +49,18 @@ def main() -> None:
         from .sebi import sync
 
         print(f"Synced {sync()} registered entities.")
+
+    elif args.cmd == "profile":
+        from .profile import run_profile
+
+        def progress(stage, frac, msg, msg_hi="", video=0, videos=0, title=""):
+            print(f"\r[{video}/{videos}] [{stage:<10}] {msg[:60]:<60}", end="", file=sys.stderr, flush=True)
+
+        p = run_profile(args.url, args.n, progress)
+        print(f"\n\n{p.channel}: {p.level} (median risk {p.median_risk}, max {p.max_risk}) · {p.registry.verdict}")
+        print(p.headline["en"])
+        for v in p.videos:
+            print(f"  {v.risk_score:>3} {v.risk_level:<6} {', '.join(v.categories)[:60]:<60} {v.title[:50]}")
 
     elif args.cmd == "resummarize":
         from .config import REPORTS_DIR, SPEECH_DIR

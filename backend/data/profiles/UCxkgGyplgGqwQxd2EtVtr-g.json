@@ -1,0 +1,197 @@
+{
+  "id": "UCxkgGyplgGqwQxd2EtVtr-g",
+  "channel": "KatochXcrypto",
+  "channel_url": "https://www.youtube.com/@KatochXcrypto",
+  "created_at": "2026-10-04T13:27:41+00:00",
+  "videos": [
+    {
+      "report_id": "9ddc092520f7",
+      "video_id": "vXw299U9aIk",
+      "title": "How high can UDR crypto rally before the dump?",
+      "position": 0,
+      "upload_date": "20261003",
+      "risk_score": 17,
+      "risk_level": "low",
+      "categories": [
+        "misleading_claim",
+        "paid_group"
+      ],
+      "verdict": "not_registered",
+      "disclaimer": false
+    },
+    {
+      "report_id": "a246a4267c3d",
+      "video_id": "6DaY5Vdiz1s",
+      "title": "How to buy UDR coin on Solana without getting rugged?",
+      "position": 1,
+      "upload_date": "20261001",
+      "risk_score": 100,
+      "risk_level": "high",
+      "categories": [
+        "guaranteed_returns",
+        "misleading_claim",
+        "paid_group",
+        "stock_tip",
+        "urgency_fomo"
+      ],
+      "verdict": "not_registered",
+      "disclaimer": false
+    },
+    {
+      "report_id": "c949b4aa4046",
+      "video_id": "0UYEnNdaUHc",
+      "title": "Is UDR crypto primed for 10X or an Exit Scam?",
+      "position": 2,
+      "upload_date": "20260930",
+      "risk_score": 100,
+      "risk_level": "high",
+      "categories": [
+        "guaranteed_returns",
+        "misleading_claim",
+        "paid_group",
+        "price_prediction",
+        "urgency_fomo"
+      ],
+      "verdict": "not_registered",
+      "disclaimer": false
+    },
+    {
+      "report_id": "aa011a38fa37",
+      "video_id": "4oZZt1Y300A",
+      "title": "Is ECTF crypto the next USDF coin to 10X this week?",
+      "position": 3,
+      "upload_date": "20260928",
+      "risk_score": 100,
+      "risk_level": "high",
+      "categories": [
+        "guaranteed_returns",
+        "misleading_claim",
+        "paid_group",
+        "price_prediction",
+        "urgency_fomo"
+      ],
+      "verdict": "not_registered",
+      "disclaimer": true
+    },
+    {
+      "report_id": "ebad9f6eaa68",
+      "video_id": "UkXgLZyzoCw",
+      "title": "How high can USDF crypto pump before the dump?",
+      "position": 4,
+      "upload_date": "20260925",
+      "risk_score": 100,
+      "risk_level": "high",
+      "categories": [
+        "guaranteed_returns",
+        "misleading_claim",
+        "paid_group",
+        "price_prediction",
+        "urgency_fomo"
+      ],
+      "verdict": "not_registered",
+      "disclaimer": false
+    }
+  ],
+  "category_videos": {
+    "misleading_claim": 5,
+    "paid_group": 5,
+    "guaranteed_returns": 4,
+    "stock_tip": 1,
+    "urgency_fomo": 4,
+    "price_prediction": 3
+  },
+  "avg_risk": 83.4,
+  "median_risk": 100.0,
+  "max_risk": 100,
+  "level": "high",
+  "disclaimer_rate": 0.2,
+  "registry": {
+    "claims_registration": false,
+    "numbers_found": [],
+    "number_results": {},
+    "name_matches": [],
+    "disclaimer_found": false,
+    "disclaimer_quotes": [],
+    "verdict": "not_registered",
+    "checks": [
+      {
+        "query": "KatochXcrypto",
+        "kind": "name",
+        "role": "channel",
+        "source": "channel",
+        "hits": []
+      },
+      {
+        "query": "Platinum Telegram",
+        "kind": "name",
+        "role": "company",
+        "source": "description",
+        "hits": []
+      },
+      {
+        "query": "Trading Academy",
+        "kind": "name",
+        "role": "company",
+        "source": "description",
+        "hits": []
+      }
+    ],
+    "entity": null
+  },
+  "worst": [
+    {
+      "report_id": "aa011a38fa37",
+      "video_title": "Is ECTF crypto the next USDF coin to 10X this week?",
+      "start": 152.406,
+      "category": "guaranteed_returns",
+      "severity": 3,
+      "quote": "তবে এটি পাম্প করলে অবশ্যই আপনি লাভবান হবেন।",
+      "why_en": "Promises guaranteed profits from pumping the price.",
+      "why_hi": "भाव बढ़ाने की गारंटीड प्रॉफिट का वादा किया जा रहा है।"
+    },
+    {
+      "report_id": "a246a4267c3d",
+      "video_title": "How to buy UDR coin on Solana without getting rugged?",
+      "start": 56.663,
+      "category": "guaranteed_returns",
+      "severity": 3,
+      "quote": "أشارككم استراتيجيات استثمارية فعّالة تُمكّنكم من تحقيق عوائد تتراوح بين ضعفين إلى عشرة أضعاف، وإذا حالفكم الحظ، فقد تصل إلى مئة ضعف كما فعل أعضاء مجتمعي.",
+      "why_en": "Promising specific return ranges and even a 'hundred-fold' outcome is misleading and can mislead investors into expecting guaranteed returns.",
+      "why_hi": "किसी खास रिटर्न का वादा करना, जैसे 'सौ गुना' लाभ, गुमराह करने वाला है। इससे निवेशकों को लगता है कि रिटर्न गारंटीड है।"
+    },
+    {
+      "report_id": "a246a4267c3d",
+      "video_title": "How to buy UDR coin on Solana without getting rugged?",
+      "start": 116.52,
+      "category": "stock_tip",
+      "severity": 3,
+      "quote": "أنا أنصح الجميع بشراء العملة من هناك.",
+      "why_en": "The speaker is directly recommending a specific stock without any caution or risk mention.",
+      "why_hi": "क्रिएटर बिना किसी चेतावनी या जोखिम बताए किसी खास स्टॉक की सलाह दे रहा है।"
+    },
+    {
+      "report_id": "aa011a38fa37",
+      "video_title": "Is ECTF crypto the next USDF coin to 10X this week?",
+      "start": 101.664,
+      "category": "urgency_fomo",
+      "severity": 2,
+      "quote": "যদি দেরি করতে না চান এবং টাকা আকরতে চান, তবে জেন বাটনে ক্লিক করে এখনই প্ল্যাটিনাম টেলিগ্রাম গ্রুপে যোগ দিন",
+      "why_en": "Encourages immediate action and joining a paid group to make money.",
+      "why_hi": "तत्काल कार्रवाई करने और पैसे कमाने के लिए पेड ग्रुप में शामिल होने को बढ़ावा दिया जा रहा है।"
+    },
+    {
+      "report_id": "aa011a38fa37",
+      "video_title": "Is ECTF crypto the next USDF coin to 10X this week?",
+      "start": 164.525,
+      "category": "guaranteed_returns",
+      "severity": 2,
+      "quote": "এটি আপনাকে ২ গুণ থেকে ৫ গুণ রিটার্ন দিতে পারে।",
+      "why_en": "Predicts specific return on investment which is not guaranteed.",
+      "why_hi": "यह रिटर्न का अनुमान लगाता है जो गारंटीड नहीं है।"
+    }
+  ],
+  "headline": {
+    "en": "Promises guaranteed or unrealistic returns in 4 of 5 videos and gives buy/sell calls in 1 of 5 videos; not SEBI-registered as an adviser.",
+    "hi": "5 में से 4 वीडियो में गारंटीड या बहुत ज़्यादा रिटर्न का वादा करता है और 5 में से 1 वीडियो में खरीदने-बेचने की टिप देता है; सलाहकार के तौर पर SEBI-रजिस्टर्ड नहीं।"
+  }
+}

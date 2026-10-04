@@ -249,3 +249,43 @@ def test_message_advice_covers_scam_categories():
     adv = summary.advice([_claim("credential_request"), _claim("upfront_payment")], _reg(), "en")
     assert any("OTP" in a for a in adv) and any("UPI" in a for a in adv)
     assert not any("No major warning signs" in a for a in adv)
+
+
+def test_channel_url_detection():
+    from nirikshak.ingest import is_channel_url
+    assert is_channel_url("https://www.youtube.com/@KatochXcrypto")
+    assert is_channel_url("https://youtube.com/channel/UCxkgGyplgGqwQxd2EtVtr-g/videos")
+    assert not is_channel_url("https://youtu.be/ea_OptyJBqw")
+    assert not is_channel_url("https://www.youtube.com/watch?v=ea_OptyJBqw")
+
+
+def test_profile_aggregation_counts_videos_not_findings():
+    from nirikshak import profile
+
+    def rep(rid, risk, cats, verdict="not_registered"):
+        r = _report(["x"])
+        r.id, r.risk_score = rid, risk
+        r.risk_level = "high" if risk >= 55 else "medium" if risk >= 25 else "low"
+        r.source.video_id, r.registry.verdict = rid, verdict
+        r.claims = [_claim(c, start=i) for i, c in enumerate(cats)]
+        return r
+
+    reports = [rep("a", 90, ["stock_tip", "stock_tip", "guaranteed_returns"]), rep("b", 70, ["stock_tip"]),
+               rep("c", 10, []), rep("d", 30, ["paid_group"], verdict="matched")]
+    p = profile.aggregate({"id": "ch", "name": "Ch", "url": "u"}, reports)
+    assert p.category_videos == {"stock_tip": 2, "guaranteed_returns": 1, "paid_group": 1}
+    assert p.max_risk == 90 and p.median_risk == 50 and p.level == "high"  # 2 of 4 videos high
+    assert p.registry.verdict == "matched"  # most informative verdict across videos
+    assert "2 of 4 videos" in p.headline["en"] and p.worst[0].report_id == "a"
+
+
+def test_single_word_company_needs_to_be_the_channels_own(monkeypatch):
+    from nirikshak import identity
+    from nirikshak.models import Source
+    monkeypatch.setattr(sebi, "lookup_number", lambda *a, **k: None)
+    src = Source(kind="youtube", channel="KatochXcrypto", description="")
+    checks = identity.collect_checks(src, [], "", [{"name": "Platinum", "role": "company", "source": "transcript"}])
+    assert all(c.query != "Platinum" for c in checks)
+    src2 = Source(kind="youtube", channel="Zero1 by Zerodha", description="")
+    checks2 = identity.collect_checks(src2, [], "", [{"name": "Zerodha", "role": "company", "source": "description"}])
+    assert any(c.query == "Zerodha" and c.hits for c in checks2)

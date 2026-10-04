@@ -134,8 +134,14 @@ def collect_checks(source: Source, segments: list[Segment], transcript: str,
                                     hits=sebi.match_name(source.channel)))
 
     # 3. People and companies found by the LLM
+    channel_text = (sebi._norm(source.channel) + " " + " ".join(own_domains(source.description, [source.channel]))).lower()
     for p in people or []:
-        if sebi._norm(p["name"]) == sebi._norm(source.channel):
+        norm = sebi._norm(p["name"])
+        if norm == sebi._norm(source.channel):
+            continue
+        # A single generic word ("Platinum") collides with registered names ("Platinum Securities");
+        # only trust one-word names that are also the channel's own name or website.
+        if len(norm.split()) < 2 and norm not in channel_text:
             continue
         checks.append(IdentityCheck(query=p["name"], kind="name", role=p["role"], source=p["source"],
                                     hits=sebi.match_name(p["name"])))

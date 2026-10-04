@@ -1,4 +1,4 @@
-import type { AskAnswer, JobEvent, Meta, Report, ReportListItem } from './types'
+import type { AskAnswer, JobEvent, Meta, Profile, ProfileListItem, Report, ReportListItem } from './types'
 
 async function json<T>(r: Response): Promise<T> {
   if (!r.ok) {
@@ -78,3 +78,13 @@ export function checkMessage(text: string, image: File | null, save: boolean) {
 }
 
 export const deleteReport = (id: string) => fetch(`/api/reports/${id}`, { method: 'DELETE' }).then((r) => json<{ deleted: string }>(r))
+
+export function startProfile(url: string, n: number) {
+  const body = new FormData()
+  body.set('url', url)
+  body.set('n', String(n))
+  return fetch('/api/profile', { method: 'POST', body }).then((r) => json<{ job: string }>(r))
+}
+export const getProfile = (id: string) => fetch(`/api/profiles/${id}`).then((r) => json<Profile>(r))
+export const listProfiles = () => fetch('/api/profiles').then((r) => json<ProfileListItem[]>(r))
+export const isChannelUrl = (u: string) => /youtube\.com\/(@[\w.-]+|channel\/|c\/|user\/)/i.test(u) && !/[?&]v=|youtu\.be\//.test(u)

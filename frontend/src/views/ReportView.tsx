@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AlertTriangle, ArrowLeft, BadgeCheck, BadgeX, Braces, ExternalLink, FileText, Loader2, Play, Plus, Printer, Trash2,
-  ShieldQuestion,
+  ArrowLeft, Braces, ExternalLink, FileText, Loader2, Play, Plus, Printer, Trash2, UserSearch,
 } from 'lucide-react'
-import { deleteReport, fmtPos, fmtTime, getReport } from '../api'
+import { deleteReport, fmtPos, fmtTime, getReport, startProfile } from '../api'
 import { useLang } from '../i18n'
 import type { Category, Claim, Meta, Report } from '../types'
 import AskPanel from '../components/AskPanel'
 import PrintReport from '../components/PrintReport'
 import { ReportBrief, ReportHero } from '../components/SummaryCard'
+import RegistryCard from '../components/RegistryCard'
 import Glass from '../components/ui/Glass'
 import { Button, LinkButton } from '../components/ui/Button'
 import Chip from '../components/ui/Chip'
@@ -17,7 +17,7 @@ import { CAT_COLOR } from '../ui'
 
 const SEBI_RA = 'https://www.sebi.gov.in/sebiweb/other/OtherAction.do?doRecognisedFpi=yes&intmId=14'
 
-export default function ReportView({ id, meta }: { id: string; meta: Meta | null }) {
+export default function ReportView({ id, meta, startAt }: { id: string; meta: Meta | null; startAt?: number }) {
   const { t, lang } = useLang()
   const [report, setReport] = useState<Report | null>(null)
   const [err, setErr] = useState('')
@@ -26,13 +26,16 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
   const [tab, setTab] = useState<'findings' | 'transcript'>('findings')
   const [active, setActive] = useState<number | null>(null)
   // Lite embed: show the thumbnail until the user plays or seeks, then load the real player.
-  const [playFrom, setPlayFrom] = useState<number | null>(null)
+  const [playFrom, setPlayFrom] = useState<number | null>(startAt ?? null)
   const iframe = useRef<HTMLIFrameElement>(null)
   const playerBox = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     getReport(id).then(setReport).catch((e) => setErr(e.message))
   }, [id])
+  useEffect(() => {
+    if (report && startAt != null) setTimeout(() => playerBox.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)
+  }, [report, startAt])
 
   const visible = useMemo(
     () => (report?.claims ?? []).filter((c) => (showWeak || c.confidence >= 0.5) && (filter === 'all' || c.category === filter)),
@@ -50,6 +53,10 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
   const { source } = report
   const isMessage = source.kind === 'message'
   const pos = (t0: number) => fmtPos(t0, isMessage, t.askLine)
+  const profileCreator = async () => {
+    const { job } = await startProfile(source.url ?? '', 8)
+    window.location.hash = `/job/${job}`
+  }
   const remove = async () => {
     await deleteReport(report.id)
     window.location.hash = '/'
@@ -113,6 +120,9 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
               <Button onClick={exportJson} variant="ghost"><Braces className="size-4" /> JSON</Button>
               <LinkButton href="#/" variant="ghost"><Plus className="size-4" /> {t.newAudit}</LinkButton>
               {isMessage && <Button variant="ghost" onClick={remove}><Trash2 className="size-4" /> {t.msgDelete}</Button>}
+              {source.kind === 'youtube' && source.url && (
+                <Button variant="ghost" onClick={profileCreator}><UserSearch className="size-4" /> {t.profileThis}</Button>
+              )}
             </>
           }
         />
@@ -248,7 +258,7 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
 
           {/* Side column */}
           <aside className="space-y-5 order-first lg:order-none">
-            {(!isMessage || (report.registry.checks ?? []).length > 0) && <RegistryCard report={report} />}
+            {(!isMessage || (report.registry.checks ?? []).length > 0) && <RegistryCard registry={report.registry} />}
             <Glass className="p-6">
               <p className="eyebrow">{t.verifyReport}</p>
               <ul className="mt-3 space-y-2.5 text-sm leading-relaxed text-ink-2">
@@ -333,94 +343,5 @@ function ClaimRow({ c, label, active, onSeek, posLabel }: { c: Claim; label: str
       <blockquote className="mt-3 border-l-[3px] border-[#ff9500] pl-3.5 text-[15px] font-medium leading-relaxed text-ink">“{c.quote}”</blockquote>
       <p className="mt-2 text-sm leading-relaxed text-ink-2" lang={lang}>{why}</p>
     </li>
-  )
-}
-
-function RegistryCard({ report }: { report: Report }) {
-  const { t } = useLang()
-  const r = report.registry
-  const good = r.verdict === 'verified' || r.verdict === 'matched' || r.verdict === 'guests_registered'
-  const bad = ['number_not_found', 'not_registered', 'claimed_unverified', 'registered_other'].includes(r.verdict)
-  const Icon = good ? BadgeCheck : bad ? BadgeX : ShieldQuestion
-  const color = good ? '#34c759' : bad ? '#ff3b30' : '#ff9f0a'
-  const typo = Object.values(r.number_results).some((h) => h && h.score < 100)
-  const checks = r.checks ?? []
-  return (
-    <Glass className="p-6">
-      <p className="eyebrow">{t.registry}</p>
-      <div className="mt-4 flex items-start gap-3 rounded-[20px] p-4"
-        style={{ background: `color-mix(in oklab, ${color} 13%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${color} 25%, transparent)` }}>
-        <Icon className="size-6 shrink-0" style={{ color }} />
-        <div className="min-w-0">
-          <p className="font-semibold text-ink">{r.verdict === 'verified' && typo ? t.verifiedTypo : t.verdict[r.verdict]}</p>
-          {r.entity && (
-            <p className="mt-1 text-sm font-medium text-ink">
-              {r.entity.name} · {t.catNames[r.entity.category] ?? r.entity.category}{' '}
-              <span className="font-mono text-xs text-ink-3">{r.entity.reg_no}</span>
-            </p>
-          )}
-          <p className="mt-1 text-[13px] leading-relaxed text-ink-2">{t.verdictHelp[r.verdict]}</p>
-        </div>
-      </div>
-
-      {checks.length > 0 ? (
-        <div className="mt-5">
-          <p className="eyebrow">{t.checked}</p>
-          <ul className="mt-3 space-y-2.5 text-sm">
-            {checks.map((c, i) => {
-              const h = c.hits[0]
-              return (
-                <li key={i} className="flex gap-2.5">
-                  {h ? <BadgeCheck className="mt-0.5 size-4 shrink-0 text-[#34c759]" /> : <BadgeX className="mt-0.5 size-4 shrink-0 text-ink-3" />}
-                  <div className="min-w-0">
-                    <p className="truncate">
-                      <span className={c.kind === 'name' ? 'font-semibold text-ink' : 'font-mono text-xs text-ink'}>{c.query}</span>
-                      <span className="text-xs text-ink-3"> · {t.roles[c.role] ?? c.role}</span>
-                    </p>
-                    <p className="truncate text-xs text-ink-3">
-                      {h ? (
-                        <>
-                          {h.how === 'near_number' && <span className="text-[#ff9f0a]">{t.typoMatch} </span>}
-                          {h.name} · {t.catNames[h.category] ?? h.category} <span className="font-mono">{h.reg_no}</span>
-                        </>
-                      ) : t.notInRegister}
-                    </p>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      ) : (
-        r.numbers_found.length > 0 && (
-          <div className="mt-5">
-            <p className="eyebrow">{t.numbersQuoted}</p>
-            <ul className="mt-2 space-y-1.5 text-sm">
-              {r.numbers_found.map((n) => {
-                const hit = r.number_results[n]
-                return (
-                  <li key={n} className="flex flex-wrap items-center gap-x-2">
-                    {hit ? <BadgeCheck className="size-4 text-[#34c759]" /> : <BadgeX className="size-4 text-[#ff3b30]" />}
-                    <span className="font-mono text-ink">{n}</span>
-                    {hit && <span className="truncate text-ink-3">· {hit.name}</span>}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        )
-      )}
-
-      <div className="mt-5 flex items-center justify-between border-t hairline pt-4 text-sm">
-        <span className="text-ink-2">{t.disclaimer}</span>
-        <span className="inline-flex items-center gap-1 font-semibold" style={{ color: r.disclaimer_found ? '#34c759' : '#ff9f0a' }}>
-          {r.disclaimer_found ? <BadgeCheck className="size-4" /> : <AlertTriangle className="size-4" />}
-          {r.disclaimer_found ? t.disclaimerYes : t.disclaimerNo}
-        </span>
-      </div>
-      <a className="link mt-4 text-sm" href={SEBI_RA} target="_blank" rel="noreferrer">
-        {t.verifyOn} <ExternalLink className="size-3.5" />
-      </a>
-    </Glass>
   )
 }

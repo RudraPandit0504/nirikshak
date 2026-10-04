@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, AudioLines, Check, FileText, Link2, Loader2, ScanText, ShieldCheck, Sparkles } from 'lucide-react'
 import { watchJob } from '../api'
 import { go } from '../ui'
@@ -18,6 +18,8 @@ export default function Job({ id }: { id: string }) {
   const [msgs, setMsgs] = useState<Partial<Record<Stage, { en: string; hi: string }>>>({})
   const [queued, setQueued] = useState(false)
   const [error, setError] = useState('')
+  const [multi, setMulti] = useState<{ video: number; videos: number; title?: string } | null>(null)
+  const lastVideo = useRef(0)
 
   useEffect(
     () =>
@@ -27,15 +29,24 @@ export default function Job({ id }: { id: string }) {
           setQueued(false)
           setStage(ev.stage as Stage)
           setFrac(ev.frac)
-          setMsgs((m) => ({ ...m, [ev.stage]: { en: ev.msg, hi: ev.msg_hi ?? ev.msg } }))
-        } else if (ev.type === 'done') go(`/report/${ev.id}`)
+          const msg = { en: ev.msg, hi: ev.msg_hi ?? ev.msg }
+          if (ev.videos && (ev.video ?? 0) !== lastVideo.current) {
+            lastVideo.current = ev.video ?? 0
+            setMsgs({ [ev.stage]: msg }) // a new video starts: reset the stage list
+          } else {
+            setMsgs((m) => ({ ...m, [ev.stage]: msg }))
+          }
+          if (ev.videos) setMulti({ video: ev.video ?? 0, videos: ev.videos, title: ev.title })
+        } else if (ev.type === 'done') go(ev.kind === 'profile' ? `/profile/${ev.id}` : `/report/${ev.id}`)
         else if (ev.type === 'error') setError(ev.msg)
       }),
     [id],
   )
 
   const current = stage ? STAGES.indexOf(stage) : -1
-  const overall = Math.round(((Math.max(current, 0) + (stage ? frac : 0)) / STAGES.length) * 100)
+  const single = ((Math.max(current, 0) + (stage ? frac : 0)) / STAGES.length) * 100
+  // For a creator profile, the ring shows progress across all videos.
+  const overall = Math.round(multi && multi.videos ? ((Math.max(multi.video - 1, 0) + single / 100) / multi.videos) * 100 : single)
   const title = error ? t.failed : queued ? t.queued : t.working
   const r = 52
   const c = 2 * Math.PI * r
@@ -66,6 +77,12 @@ export default function Job({ id }: { id: string }) {
             </div>
           </div>
           <h1 className="display mt-6 text-2xl sm:text-3xl">{title}</h1>
+          {multi && multi.video > 0 && (
+            <p className="mt-2 inline-flex max-w-md items-center gap-2 rounded-full bg-[var(--glass-inset)] px-3 py-1 text-sm text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">
+              <span className="font-semibold text-ink">{t.videoOf.replace('{i}', String(multi.video)).replace('{n}', String(multi.videos))}</span>
+              {multi.title && <span className="truncate">· {multi.title}</span>}
+            </p>
+          )}
           {!error && stage && msgs[stage] && (
             <p className="mt-2 max-w-md truncate text-sm text-ink-2">{msgs[stage]![lang]}</p>
           )}

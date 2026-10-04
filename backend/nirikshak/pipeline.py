@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from . import analyse, identity, rules, sebi, summary
+from . import analyse, identity, llm, rules, sebi, summary
 from .categories import CATEGORIES
 from .config import HI_MODEL, LLM_MODEL, MAX_DURATION, REPORTS_DIR, WORK_DIR
 from .ingest import IngestError, fetch_youtube, ocr_image, probe_duration, to_wav
@@ -215,7 +215,7 @@ def run_audit(target: str | Path, progress: Progress = _noop, job_id: str | None
             id=job_id, created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             source=source, segments=segments, claims=claims, registry=reg,
             risk_score=0, risk_level="low", summary_en="", summary_hi="",
-            model=f"{LLM_MODEL} + {HI_MODEL}", timings=timings,
+            model=llm.model_label(), timings=timings,
         )
         finalize(report, lambda f, m, h="": progress("summary", f, m, h))
         progress("summary", 1, "Done", "पूरा हुआ")
@@ -283,7 +283,7 @@ def run_message_audit(text: str | None = None, image: Path | None = None, progre
             id=job_id, created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             source=source, segments=segments, claims=claims, registry=reg,
             risk_score=0, risk_level="low", summary_en="", summary_hi="",
-            model=f"{LLM_MODEL} + {HI_MODEL}", timings=timings, private=private,
+            model=llm.model_label(), timings=timings, private=private,
         )
         finalize(report, lambda f, m, h="": progress("summary", f, m, h))
         progress("summary", 1, "Done", "पूरा हुआ")

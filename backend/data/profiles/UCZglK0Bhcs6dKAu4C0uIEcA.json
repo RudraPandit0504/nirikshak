@@ -1,0 +1,154 @@
+{
+  "id": "UCZglK0Bhcs6dKAu4C0uIEcA",
+  "channel": "Money Matters - Shubham Agrawal - SEBI Reg. RA",
+  "channel_url": "https://www.youtube.com/channel/UCZglK0Bhcs6dKAu4C0uIEcA",
+  "created_at": "2026-10-04T13:25:50+00:00",
+  "videos": [
+    {
+      "report_id": "e5b950753dd9",
+      "video_id": "RVILaL2NoUY",
+      "title": "🚨 Nifty Crash के बाद अब क्या होगा? क्या Fall खत्म हुई? | Nifty 50 Analysis | SEBI Registered RA",
+      "position": 0,
+      "upload_date": "20261002",
+      "risk_score": 7,
+      "risk_level": "low",
+      "categories": [],
+      "verdict": "verified",
+      "disclaimer": true
+    },
+    {
+      "report_id": "1180be83dd92",
+      "video_id": "VMOGYqnKCcw",
+      "title": "🚨 Market Crash - क्या Nifty 20,000 तक गिरेगा? | Stock Market Crash | SEBI Registered RA",
+      "position": 1,
+      "upload_date": "20260929",
+      "risk_score": 7,
+      "risk_level": "low",
+      "categories": [],
+      "verdict": "verified",
+      "disclaimer": true
+    },
+    {
+      "report_id": "682a7ba8292c",
+      "video_id": "fh5cw-BHV5Y",
+      "title": "🚨 Parag Parikh में SIP रोक देना चाहिए? | Parag Parikh Flexi Cap Fund | SEBI Registered RA",
+      "position": 2,
+      "upload_date": "20260927",
+      "risk_score": 7,
+      "risk_level": "low",
+      "categories": [],
+      "verdict": "verified",
+      "disclaimer": true
+    },
+    {
+      "report_id": "df74f0ff94fc",
+      "video_id": "t713zNUBQTM",
+      "title": "🚨 Market Crash - 23,000 के नीचे क्या होगा? | Nifty Analysis | SEBI Registered RA",
+      "position": 3,
+      "upload_date": "20260925",
+      "risk_score": 7,
+      "risk_level": "low",
+      "categories": [],
+      "verdict": "verified",
+      "disclaimer": true
+    }
+  ],
+  "category_videos": {},
+  "avg_risk": 7.0,
+  "median_risk": 7.0,
+  "max_risk": 7,
+  "level": "low",
+  "disclaimer_rate": 1.0,
+  "registry": {
+    "claims_registration": true,
+    "numbers_found": [
+      "INH000020411"
+    ],
+    "number_results": {
+      "INH000020411": {
+        "reg_no": "INH000020411",
+        "name": "Shubham Agrawal proprietor of Shubh Technical Research",
+        "category": "Research Analyst",
+        "validity": "May 13, 2025 - Perpetual",
+        "score": 100.0,
+        "how": "number"
+      }
+    },
+    "name_matches": [
+      {
+        "reg_no": "INH000020411",
+        "name": "Shubham Agrawal proprietor of Shubh Technical Research",
+        "category": "Research Analyst",
+        "validity": "May 13, 2025 - Perpetual",
+        "score": 100.0,
+        "how": "contact_person"
+      }
+    ],
+    "disclaimer_found": true,
+    "disclaimer_quotes": [
+      "l be disclosed as per SEBI Regulations. Investment in securities market are subject to market risks. Read all the related documents careful"
+    ],
+    "verdict": "verified",
+    "checks": [
+      {
+        "query": "INH000020411",
+        "kind": "number",
+        "role": "number",
+        "source": "description",
+        "hits": [
+          {
+            "reg_no": "INH000020411",
+            "name": "Shubham Agrawal proprietor of Shubh Technical Research",
+            "category": "Research Analyst",
+            "validity": "May 13, 2025 - Perpetual",
+            "score": 100.0,
+            "how": "number"
+          }
+        ]
+      },
+      {
+        "query": "Money Matters - Shubham Agrawal - SEBI Reg. RA",
+        "kind": "name",
+        "role": "channel",
+        "source": "channel",
+        "hits": []
+      },
+      {
+        "query": "Shubham Agrawal",
+        "kind": "name",
+        "role": "speaker",
+        "source": "transcript",
+        "hits": [
+          {
+            "reg_no": "INH000020411",
+            "name": "Shubham Agrawal proprietor of Shubh Technical Research",
+            "category": "Research Analyst",
+            "validity": "May 13, 2025 - Perpetual",
+            "score": 100.0,
+            "how": "contact_person"
+          }
+        ]
+      },
+      {
+        "query": "SEBI Registered RA",
+        "kind": "name",
+        "role": "company",
+        "source": "transcript",
+        "hits": []
+      }
+    ],
+    "entity": {
+      "reg_no": "INH000020411",
+      "name": "Shubham Agrawal proprietor of Shubh Technical Research",
+      "category": "Research Analyst",
+      "validity": "May 13, 2025 - Perpetual",
+      "score": 100.0,
+      "how": "number"
+    }
+  },
+  "worst": [],
+  "headline": {
+    "en": "No major red flags across the last 4 videos; SEBI-registered adviser/analyst.",
+    "hi": "पिछले 4 वीडियो में कोई बड़ा खतरे का संकेत नहीं मिला; SEBI-रजिस्टर्ड सलाहकार/एनालिस्ट।"
+  }
+}

@@ -51,11 +51,16 @@ def _pick_caption_track(info: dict) -> tuple[str, str] | None:
     for lang in (spoken, "hi", "en"):
         if lang:
             order.append((manual, lang))
-    # "<lang>-orig" is the auto caption in the language actually spoken;
-    # plain "<lang>" in automatic_captions is usually a machine translation.
-    for key in auto:
-        if key.endswith("-orig"):
-            order.append((auto, key))
+    # "<lang>-orig" is the auto caption in the language actually spoken; plain "<lang>" is usually
+    # a machine translation. Auto-dubbed videos have several "-orig" tracks (one per dubbed audio),
+    # so prefer the video's declared spoken language, then Hindi/English, then anything else.
+    origs = [k for k in auto if k.endswith("-orig")]
+    for pref in (spoken, "en", "hi"):
+        for key in origs:
+            if pref and key.split("-")[0] == pref:
+                order.append((auto, key))
+    for key in origs:
+        order.append((auto, key))
     for lang in (spoken, "hi", "en"):
         if lang:
             order.append((auto, lang))
@@ -114,6 +119,8 @@ def fetch_youtube(url: str, workdir: Path, want_audio: bool = False) -> tuple[So
         description=info.get("description") or "",
         duration=duration,
         language=info.get("language"),
+        channel_id=info.get("channel_id"),
+        upload_date=info.get("upload_date"),
     )
 
     segments = None
@@ -167,28 +174,56 @@ def probe_duration(path: Path) -> float:
 
 
 def ocr_image(path: Path) -> str:
-    """Read the text in a screenshot with the local vision model (gemma3, via Ollama)."""
+    """Read the text in a screenshot with a vision model (local gemma3, or Gemini when hosted)."""
     import base64
 
-    from .config import HI_MODEL, OLLAMA_URL
+    from .llm import LLMError, vision_text
 
-    img = base64.b64encode(path.read_bytes()).decode()
+    prompt = ("You are an OCR engine. Copy ALL the text in this screenshot of a chat or message, "
+              "line by line, exactly as written. Hindi in Devanagari script must stay in Devanagari "
+              "(for example पक्का मुनाफा, never 'pakka munafa'); English or Hinglish in Latin letters "
+              "stays in Latin letters. Never transliterate or translate. Keep links, numbers, UPI IDs "
+              "and names exactly. Output only the text, nothing else.")
     try:
-        r = httpx.post(f"{OLLAMA_URL}/api/chat", json={
-            "model": HI_MODEL,
-            "stream": False,
-            "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 1500},
-            "messages": [{
-                "role": "user",
-                "content": ("You are an OCR engine. Copy ALL the text in this screenshot of a chat or message, "
-                            "line by line, exactly as written. Hindi in Devanagari script must stay in Devanagari "
-                            "(for example पक्का मुनाफा, never 'pakka munafa'); English or Hinglish in Latin letters "
-                            "stays in Latin letters. Never transliterate or translate. Keep links, numbers, UPI IDs "
-                            "and names exactly. Output only the text, nothing else."),
-                "images": [img],
-            }],
-        }, timeout=300)
-        r.raise_for_status()
-    except httpx.HTTPError as e:
-        raise IngestError(f"Could not read the screenshot: {e}") from e
-    return r.json().get("message", {}).get("content", "").strip()
+        return vision_text(base64.b64encode(path.read_bytes()).decode(), prompt)
+    except LLMError as e:
+        raise IngestError(str(e)) from e
+
+
+CHANNEL_URL = re.compile(r"youtube\.com/(@[\w.\-]+|channel/[\w-]+|c/[\w.\-]+|user/[\w.\-]+)", re.I)
+
+
+def is_channel_url(url: str) -> bool:
+    return bool(CHANNEL_URL.search(url)) and not youtube_id(url)
+
+
+def list_channel_videos(url: str, n: int) -> tuple[dict, list[dict]]:
+    """A channel's n most recent normal videos (newest first), from a channel URL or any of its video URLs."""
+    with yt_dlp.YoutubeDL({**YDL_BASE, "extract_flat": "in_playlist"}) as ydl:
+        if not is_channel_url(url):
+            vid = youtube_id(url)
+            if not vid:
+                raise IngestError("Paste a YouTube channel link (youtube.com/@name) or any video link from that channel.")
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={vid}", download=False, process=False)
+            url = info.get("channel_url") or info.get("uploader_url")
+            if not url:
+                raise IngestError("Could not find the channel of that video.")
+        m = CHANNEL_URL.search(url)
+        base = f"https://www.youtube.com/{m.group(1)}" if m else url.rstrip("/")
+        try:
+            info = ydl.extract_info(f"{base}/videos", download=False)
+        except yt_dlp.utils.DownloadError as e:
+            raise IngestError(f"Could not read the channel: {e}") from e
+    videos = []
+    for e in info.get("entries") or []:
+        if len(videos) >= n:
+            break
+        dur = e.get("duration")
+        if not e.get("id") or dur is None or dur > MAX_DURATION or dur < 60 or e.get("live_status") in ("is_live", "is_upcoming"):
+            continue  # live streams, premieres, Shorts-length clips and very long videos are skipped
+        videos.append({"id": e["id"], "title": e.get("title") or "", "duration": dur})
+    if not videos:
+        raise IngestError("No suitable videos found on this channel.")
+    channel = {"name": info.get("channel") or info.get("uploader") or "", "id": info.get("channel_id") or base.rsplit("/", 1)[-1],
+               "url": base}
+    return channel, videos

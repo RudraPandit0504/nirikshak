@@ -164,6 +164,13 @@ body {
 
 @media print {
   @page { size: A4; margin: 14mm 13mm 16mm; }
+  /* Screen pages printed directly (e.g. a creator profile): glass becomes plain cards. */
+  .glass, .glass-strong, .glass-pill, .glass-inset {
+    background: #fff !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+    box-shadow: none !important; border: 1px solid #e2e8f0; break-inside: avoid;
+  }
+  .glass::before, .glass-strong::before, .glass-pill::before { display: none !important; }
+  .dark { --ink: #0f172a; --ink-2: #334155; --ink-3: #64748b; }
   .no-print { display: none !important; }
   html, body { background: white !important; color: #0f172a !important; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

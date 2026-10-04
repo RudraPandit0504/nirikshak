@@ -8,7 +8,7 @@ from typing import Callable
 import httpx
 from rapidfuzz import fuzz
 
-from . import hindi
+from . import hindi, llm
 from .categories import CATEGORIES
 from .config import HI_MODEL, LLM_MODEL, OLLAMA_URL, WINDOW_SECONDS
 from .models import Claim, Segment
@@ -76,43 +76,16 @@ Rules:
 - If nothing qualifies, return {{"claims": []}}."""
 
 
-class LLMError(RuntimeError):
-    pass
+LLMError = llm.LLMError
 
 
 def _chat(messages: list[dict], schema: dict, num_predict: int = 1500, model: str = LLM_MODEL) -> dict:
-    try:
-        r = httpx.post(
-            f"{OLLAMA_URL}/api/chat",
-            json={
-                "model": model,
-                "messages": messages,
-                "format": schema,
-                "stream": False,
-                "keep_alive": "10m",
-                "think": False,
-                "options": {"temperature": 0, "num_ctx": 8192, "num_predict": num_predict},
-            },
-            timeout=300,
-        )
-    except httpx.ConnectError as e:
-        raise LLMError(f"Cannot reach Ollama at {OLLAMA_URL}. Is it running?") from e
-    if r.status_code == 404:
-        raise LLMError(f"Model {model} not found. Run: ollama pull {model}")
-    r.raise_for_status()
-    try:
-        return json.loads(r.json()["message"]["content"])
-    except (KeyError, json.JSONDecodeError):
-        return {}
+    """All structured model calls go through the provider layer (Ollama locally, Gemini when hosted)."""
+    return llm.chat_json(messages, schema, num_predict, model)
 
 
 def unload_models() -> None:
-    """Evict our models from VRAM so Whisper has room (Ollama keeps them loaded for a while)."""
-    for m in {LLM_MODEL, HI_MODEL}:
-        try:
-            httpx.post(f"{OLLAMA_URL}/api/generate", json={"model": m, "keep_alive": 0}, timeout=30)
-        except httpx.HTTPError:
-            pass
+    llm.unload_local_models()
 
 
 def windows(segments: list[Segment], seconds: int = WINDOW_SECONDS) -> list[list[int]]:
