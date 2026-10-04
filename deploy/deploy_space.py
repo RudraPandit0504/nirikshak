@@ -1,7 +1,7 @@
 """Create/update the Hugging Face Space for the hosted demo.
 
-Reads HF_TOKEN and GEMINI_API_KEY from ~/.config/nirikshak/env. The Gemini key is stored as an
-encrypted Space *secret* (never committed, never sent to browsers).
+Reads HF_TOKEN plus GROQ_API_KEY and/or GEMINI_API_KEY from ~/.config/nirikshak/env. The API keys
+are stored as encrypted Space *secrets* (never committed, never sent to browsers).
 """
 import json
 import os
@@ -20,7 +20,13 @@ user = api.whoami()["name"]
 repo = f"{user}/{sys.argv[1] if len(sys.argv) > 1 else 'nirikshak'}"
 
 api.create_repo(repo, repo_type="space", space_sdk="docker", exist_ok=True)
-api.add_space_secret(repo, "GEMINI_API_KEY", env["GEMINI_API_KEY"])
+for k in ("GROQ_API_KEY", "GEMINI_API_KEY"):
+    if env.get(k):
+        api.add_space_secret(repo, k, env[k])
+# Optional model choices (comma-separated, tried in order), e.g. NIRIKSHAK_GROQ_MODELS=llama-3.3-70b-versatile
+for k in ("NIRIKSHAK_GROQ_MODELS", "NIRIKSHAK_GROQ_VISION", "NIRIKSHAK_GEMINI_MODELS", "NIRIKSHAK_GEMINI_VISION"):
+    if env.get(k):
+        api.add_space_variable(repo, k, env[k])
 
 with tempfile.TemporaryDirectory() as tmp:
     tmp = Path(tmp)

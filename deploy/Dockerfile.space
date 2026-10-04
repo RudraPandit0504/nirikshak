@@ -20,7 +20,7 @@ COPY --chown=user --from=web /web/dist /app/frontend/dist
 RUN mkdir -p /app/backend/data && chown -R user:user /app
 USER user
 ENV HOME=/home/user \
-    NIRIKSHAK_PROVIDER=gemini \
+    NIRIKSHAK_PROVIDER=cloud \
     NIRIKSHAK_WHISPER=small \
     NIRIKSHAK_WHISPER_DEVICE=cpu \
     NIRIKSHAK_MAX_DURATION=1500 \

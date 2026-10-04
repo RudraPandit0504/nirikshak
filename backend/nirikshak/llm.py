@@ -1,10 +1,13 @@
-"""LLM provider layer: local Ollama (default) or Google Gemini (for the hosted demo).
+"""LLM provider layer: local Ollama (default) or free cloud APIs (for the hosted demo).
 
 Every model call in the app goes through `chat_json` (structured JSON output) or
 `vision_text` (read text from an image), so switching provider is one setting:
 
     NIRIKSHAK_PROVIDER=ollama   # default: qwen2.5:7b + gemma3:4b on the local GPU
-    NIRIKSHAK_PROVIDER=gemini   # GEMINI_API_KEY required; key stays on the server
+    NIRIKSHAK_PROVIDER=cloud    # GROQ_API_KEY and/or GEMINI_API_KEY; keys stay on the server
+
+In cloud mode every model of every configured provider is tried in order, so a rate limit or an
+outage on one (each has its own free quota) falls through to the next.
 """
 from __future__ import annotations
 
@@ -18,8 +21,31 @@ import httpx
 from .config import HI_MODEL, LLM_MODEL, OLLAMA_URL
 
 PROVIDER = os.environ.get("NIRIKSHAK_PROVIDER", "ollama").lower()
-GEMINI_MODEL = os.environ.get("NIRIKSHAK_GEMINI_MODEL", "gemini-2.5-flash")
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+if PROVIDER in ("gemini", "groq"):
+    PROVIDER = "cloud"
+
+
+def _models(var: str, default: str) -> list[str]:
+    return [m.strip() for m in os.environ.get(var, default).split(",") if m.strip()]
+
+
+# (name, endpoint, key env var, text models, vision models). All are OpenAI-compatible.
+CLOUD = [
+    ("groq", "https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY",
+     _models("NIRIKSHAK_GROQ_MODELS", "openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b"),
+     _models("NIRIKSHAK_GROQ_VISION", "")),  # Groq has no vision model now; Gemini reads screenshots
+    ("gemini", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "GEMINI_API_KEY",
+     _models("NIRIKSHAK_GEMINI_MODELS", "gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash"),
+     _models("NIRIKSHAK_GEMINI_VISION", "gemini-2.5-flash,gemini-2.5-flash-lite")),
+]
+
+
+# Gemini first: its free tier allows far more tokens per minute than Groq's (8k), which one video window can use up.
+ORDER = _models("NIRIKSHAK_CLOUD_ORDER", "gemini,groq")
+
+
+def _available() -> list[tuple]:
+    return sorted((c for c in CLOUD if os.environ.get(c[2]) and c[0] in ORDER), key=lambda c: ORDER.index(c[0]))
 
 
 class LLMError(RuntimeError):
@@ -27,7 +53,10 @@ class LLMError(RuntimeError):
 
 
 def model_label() -> str:
-    return f"{GEMINI_MODEL} (Google Gemini)" if PROVIDER == "gemini" else f"{LLM_MODEL} + {HI_MODEL}"
+    if PROVIDER != "cloud":
+        return f"{LLM_MODEL} + {HI_MODEL}"
+    avail = _available()
+    return " → ".join(f"{c[3][0]}" for c in avail) if avail else "no API key set"
 
 
 # ---------------- Ollama ----------------
@@ -50,31 +79,58 @@ def _ollama_chat(messages: list[dict], schema: dict, num_predict: int, model: st
         return {}
 
 
-# ---------------- Gemini ----------------
+# ---------------- cloud (OpenAI-compatible) ----------------
 
-def _gemini_post(body: dict) -> dict:
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
-        raise LLMError("GEMINI_API_KEY is not set on the server.")
-    for attempt in range(6):
-        try:
-            r = httpx.post(GEMINI_URL, json=body, headers={"Authorization": f"Bearer {key}"}, timeout=180)
-        except httpx.HTTPError as e:
-            if attempt == 5:
-                raise LLMError(f"Gemini request failed: {e}") from e
-            time.sleep(2 ** attempt)
-            continue
-        if r.status_code in (429, 500, 502, 503, 504):  # rate limit / overload: back off and retry
-            time.sleep(min(30, 2 ** attempt * 2) + random.random())
-            continue
-        if r.status_code >= 400:
-            raise LLMError(f"Gemini error {r.status_code}: {r.text[:300]}")
-        return r.json()
-    raise LLMError("Gemini is busy (rate limit). Please try again in a minute.")
+def _body(provider: str, model: str, base: dict, schema: dict | None) -> dict:
+    """Adapt one request to what each provider/model accepts."""
+    body = {**base, "model": model}
+    msgs = list(base["messages"])
+    if provider == "gemini":
+        body["reasoning_effort"] = "none"
+    elif "gpt-oss" in model:
+        body["reasoning_effort"] = "low"
+    elif "qwen3" in model:
+        body["reasoning_effort"] = "none"
+    if schema is not None:
+        if provider == "gemini" or "gpt-oss" in model:
+            body["response_format"] = {"type": "json_schema",
+                                       "json_schema": {"name": "result", "schema": _clean_schema(schema)}}
+        else:  # plain JSON mode: spell the schema out in the prompt
+            body["response_format"] = {"type": "json_object"}
+            msgs = [*msgs[:-1], {**msgs[-1], "content": f"{msgs[-1]['content']}\n\nReply with only a JSON object matching "
+                                                      f"this JSON schema:\n{json.dumps(_clean_schema(schema))}"}]
+    body["messages"] = msgs
+    return body
+
+
+def _cloud_post(base: dict, schema: dict | None = None, vision: bool = False) -> dict:
+    """Try every configured provider/model in order; back off on rate limits and overloads."""
+    chain = [(name, url, key, m) for name, url, key, text, vis in _available() for m in (vis if vision else text)]
+    if not chain:
+        raise LLMError("No cloud API key is set on the server (GROQ_API_KEY or GEMINI_API_KEY).")
+    last = ""
+    for name, url, key, model in chain:
+        for attempt in range(2):
+            try:
+                r = httpx.post(url, json=_body(name, model, base, schema),
+                               headers={"Authorization": f"Bearer {os.environ[key]}"}, timeout=120)
+            except httpx.HTTPError as e:
+                last = f"{name}: {e}"
+                time.sleep(1 + attempt)
+                continue
+            if r.status_code in (429, 500, 502, 503, 504):  # rate limit / overload: retry once, then next model
+                last = f"{name} {model}: {r.status_code}"
+                time.sleep(2 + 3 * attempt + random.random())
+                continue
+            if r.status_code >= 400:  # unknown/retired model, unsupported option, bad key: next model
+                last = f"{name} {model}: {r.status_code} {r.text[:200]}"
+                break
+            return r.json()
+    raise LLMError(f"The AI service is busy right now ({last}). Please try again in a minute.")
 
 
 def _clean_schema(schema: dict) -> dict:
-    """Gemini's JSON-schema support is a subset: drop numeric bounds it may reject."""
+    """Drop numeric bounds some providers reject in JSON schemas."""
     if isinstance(schema, dict):
         return {k: _clean_schema(v) for k, v in schema.items() if k not in ("minimum", "maximum")}
     if isinstance(schema, list):
@@ -82,21 +138,16 @@ def _clean_schema(schema: dict) -> dict:
     return schema
 
 
-def _gemini_chat(messages: list[dict], schema: dict, num_predict: int) -> dict:
-    body = {
-        "model": GEMINI_MODEL,
-        "messages": messages,
-        "temperature": 0,
-        "max_tokens": max(num_predict * 2, 1024),
-        "reasoning_effort": "none",
-        "response_format": {"type": "json_schema", "json_schema": {"name": "result", "schema": _clean_schema(schema)}},
-    }
-    data = _gemini_post(body)
+def _content(data: dict) -> str:
     try:
-        text = data["choices"][0]["message"]["content"] or ""
+        return (data["choices"][0]["message"]["content"] or "").strip()
     except (KeyError, IndexError):
-        return {}
-    text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        return ""
+
+
+def _cloud_chat(messages: list[dict], schema: dict, num_predict: int) -> dict:
+    data = _cloud_post({"messages": messages, "temperature": 0, "max_tokens": max(num_predict, 1024)}, schema)
+    text = _content(data).removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     try:
         return json.loads(text)
     except json.JSONDecodeError:
@@ -106,24 +157,17 @@ def _gemini_chat(messages: list[dict], schema: dict, num_predict: int) -> dict:
 # ---------------- public API ----------------
 
 def chat_json(messages: list[dict], schema: dict, num_predict: int = 1500, model: str = LLM_MODEL) -> dict:
-    if PROVIDER == "gemini":
-        return _gemini_chat(messages, schema, num_predict)
+    if PROVIDER == "cloud":
+        return _cloud_chat(messages, schema, num_predict)
     return _ollama_chat(messages, schema, num_predict, model)
 
 
 def vision_text(image_b64: str, prompt: str) -> str:
-    if PROVIDER == "gemini":
-        data = _gemini_post({
-            "model": GEMINI_MODEL, "temperature": 0, "reasoning_effort": "none", "max_tokens": 3000,
-            "messages": [{"role": "user", "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}},
-            ]}],
-        })
-        try:
-            return (data["choices"][0]["message"]["content"] or "").strip()
-        except (KeyError, IndexError):
-            return ""
+    if PROVIDER == "cloud":
+        return _content(_cloud_post({"temperature": 0, "max_tokens": 3000, "messages": [{"role": "user", "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}},
+        ]}]}, vision=True))
     try:
         r = httpx.post(f"{OLLAMA_URL}/api/chat", json={
             "model": HI_MODEL, "stream": False,

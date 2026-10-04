@@ -165,7 +165,8 @@ await scene('vid_audit', async () => {
   await ev("__demo.click('Audit video')")
   await sleep(9000) // let the progress stages show while the narration explains them
 })
-await skipUntil("location.hash.includes('/report/')", '⏩  audit finished: {s} s later (sped up)', 900)
+await skipUntil("location.hash.includes('/report/') || document.body.innerText.includes('Audit failed')", '⏩  audit finished: {s} s later (sped up)', 900)
+if (!(await ev("location.hash.includes('/report/')"))) { console.error('live audit failed'); chrome.kill(); process.exit(2) }
 await sleep(2000)
 await ev('__demo.ensure()')
 fresh = (await ev('location.hash')).split('/report/')[1]
