@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 import time
 
 import logging
@@ -102,10 +103,10 @@ def _body(provider: str, model: str, base: dict, schema: dict | None) -> dict:
     elif "qwen3" in model:
         body["reasoning_effort"] = "none"
     if schema is not None:
-        if provider == "gemini" or "gpt-oss" in model:
+        if provider == "gemini" or (provider == "groq" and "gpt-oss" in model):
             body["response_format"] = {"type": "json_schema",
                                        "json_schema": {"name": "result", "schema": _clean_schema(schema)}}
-        else:  # plain JSON mode: spell the schema out in the prompt
+        else:  # plain JSON mode (Bedrock ignores json_schema): spell the schema out in the prompt
             body["response_format"] = {"type": "json_object"}
             msgs = [*msgs[:-1], {**msgs[-1], "content": f"{msgs[-1]['content']}\n\nReply with only a JSON object matching "
                                                       f"this JSON schema:\n{json.dumps(_clean_schema(schema))}"}]
@@ -160,18 +161,38 @@ def _clean_schema(schema: dict) -> dict:
 
 def _content(data: dict) -> str:
     try:
-        return (data["choices"][0]["message"]["content"] or "").strip()
+        text = data["choices"][0]["message"]["content"] or ""
     except (KeyError, IndexError):
         return ""
+    # Bedrock's gpt-oss returns its reasoning inline: "<reasoning>…</reasoning>answer".
+    return re.sub(r"(?s)<reasoning>.*?</reasoning>", "", text).strip()
 
 
 def _cloud_chat(messages: list[dict], schema: dict, num_predict: int) -> dict:
     data = _cloud_post({"messages": messages, "temperature": 0, "max_tokens": max(num_predict, 1024)}, schema)
-    text = _content(data).removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return {}
+    return _first_object(_content(data), schema)
+
+
+def _first_object(text: str, schema: dict) -> dict:
+    """The first JSON object in `text` that has the schema's required keys.
+
+    Tolerates fences, bold markers, a sentence around the object, and stray leading braces
+    (Bedrock's gpt-oss sometimes emits `{ {"claims": …}`)."""
+    want = set(schema.get("required", []))
+    dec = json.JSONDecoder()
+    fallback: dict = {}
+    for i, ch in enumerate(text):
+        if ch != "{":
+            continue
+        try:
+            obj, _ = dec.raw_decode(text, i)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            if want <= obj.keys():
+                return obj
+            fallback = fallback or obj
+    return fallback
 
 
 # ---------------- public API ----------------
