@@ -205,7 +205,26 @@ export default function PrintReport({ report, catLabel }: { report: Report; catL
             </table>
           </>
         )}
-        {reg.name_matches.length > 0 && (
+        {reg.entity && (
+          <p><strong>{t.registeredAs}</strong> {reg.entity.name} · {t.catNames[reg.entity.category] ?? reg.entity.category} · <span className="pr-mono">{reg.entity.reg_no}</span>{reg.entity.validity && <> · {reg.entity.validity}</>}</p>
+        )}
+        {(reg.checks ?? []).length > 0 && (
+          <>
+            <h3>{t.checked}</h3>
+            <table className="pr-table">
+              <tbody>
+                {(reg.checks ?? []).map((c, i) => (
+                  <tr key={i}>
+                    <td className={c.kind === 'name' ? '' : 'pr-mono'}>{c.query}</td>
+                    <td>{t.roles[c.role] ?? c.role}</td>
+                    <td>{c.hits[0] ? `${c.hits[0].how === 'near_number' ? t.typoMatch + ' ' : ''}${c.hits[0].name} · ${t.catNames[c.hits[0].category] ?? c.hits[0].category} · ${c.hits[0].reg_no}` : t.notInRegister}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+        {!(reg.checks ?? []).length && reg.name_matches.length > 0 && (
           <>
             <h3>{p.similar}</h3>
             <ul className="pr-list">

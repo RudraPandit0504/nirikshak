@@ -49,10 +49,22 @@ export interface RegistryHit {
   category: string
   validity: string
   score: number
+  how?: 'number' | 'near_number' | 'name' | 'contact_person' | 'domain' | ''
+}
+
+export interface IdentityCheck {
+  query: string
+  kind: 'number' | 'name' | 'domain'
+  role: 'channel' | 'owner' | 'speaker' | 'guest' | 'company' | 'website' | 'number'
+  source: 'channel' | 'title' | 'description' | 'transcript'
+  hits: RegistryHit[]
 }
 
 export type Verdict =
   | 'verified'
+  | 'matched'
+  | 'registered_other'
+  | 'guests_registered'
   | 'number_not_found'
   | 'claimed_unverified'
   | 'possible_match'
@@ -67,6 +79,8 @@ export interface RegistryCheck {
   disclaimer_found: boolean
   disclaimer_quotes: string[]
   verdict: Verdict
+  checks?: IdentityCheck[]
+  entity?: RegistryHit | null
 }
 
 export interface Concern {

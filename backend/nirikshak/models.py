@@ -53,6 +53,16 @@ class RegistryHit(BaseModel):
     category: str
     validity: str = ""
     score: float = 100
+    how: str = ""  # number | near_number | name | contact_person | domain
+
+
+class IdentityCheck(BaseModel):
+    """One name, website or number we looked up, and what it matched."""
+    query: str
+    kind: Literal["number", "name", "domain"]
+    role: Literal["channel", "owner", "speaker", "guest", "company", "website", "number"]
+    source: Literal["channel", "title", "description", "transcript"]
+    hits: list[RegistryHit] = []
 
 
 class RegistryCheck(BaseModel):
@@ -62,7 +72,10 @@ class RegistryCheck(BaseModel):
     name_matches: list[RegistryHit]
     disclaimer_found: bool
     disclaimer_quotes: list[str]
-    verdict: Literal["verified", "number_not_found", "claimed_unverified", "possible_match", "not_registered", "unknown"]
+    verdict: Literal["verified", "matched", "registered_other", "guests_registered", "number_not_found",
+                     "claimed_unverified", "possible_match", "not_registered", "unknown"]
+    checks: list[IdentityCheck] = []
+    entity: RegistryHit | None = None  # the registration the verdict is about, if any
 
 
 class Concern(BaseModel):

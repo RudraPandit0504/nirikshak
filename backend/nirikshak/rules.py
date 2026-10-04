@@ -86,7 +86,7 @@ RULES: list[Rule] = [
     *_r("registration_claim", 1,
         r"(?<!not\s)(?<!not\sa\s)(?<!non-)(?<!non\s)\bsebi[\s-]*(registered|certified|approved|authori[sz]ed)\b",
         r"(?<!not\s)(?<!not\sa\s)(?<!non-)\b(registered|certified)\s*(research\s*analyst|investment\s*advis[eo]r|ra|ria)\b",
-        r"\bIN[AH]\s*-?\s*\d{8,10}\b",
+        r"\bIN[AHZP]\s*[-:.]?\s*(?:\d[\s-]?){7,10}\d\b",
         r"(सेबी|सीबी)\s*(रजिस्टर्ड|रजिस्टर|सर्टिफाइड|अप्रूव्ड)",
     ),
 ]
@@ -106,7 +106,9 @@ DISCLAIMER_PATTERNS = [re.compile(p, re.IGNORECASE) for p in (
 
 # Real numbers have 9 digits, but creators often mistype them, so accept 8-10 and let
 # the registry lookup decide (exact match or near match).
-REG_NO = re.compile(r"\bIN[AH]\s*-?\s*(\d{8,10})\b", re.IGNORECASE)
+# SEBI prefixes: INA adviser, INH research analyst, INZ/INB/INF broker, INP portfolio manager,
+# INM merchant banker. Digits are sometimes written in groups ("INH 000 012 345").
+REG_NO = re.compile(r"\b(IN[AHZPMBF])\s*[-:.]?\s*((?:\d[\s-]?){7,10}\d)\b", re.IGNORECASE)
 
 
 @dataclass
@@ -160,7 +162,10 @@ def find_reg_numbers(*texts: str) -> list[str]:
     out = []
     for text in texts:
         for m in REG_NO.finditer(text):
-            reg = f"{m.group(0)[:3].upper()}{m.group(1)}"
+            digits = re.sub(r"\D", "", m.group(2))
+            if not 8 <= len(digits) <= 10:
+                continue
+            reg = f"{m.group(1).upper()}{digits}"
             if reg not in out:
                 out.append(reg)
     return out

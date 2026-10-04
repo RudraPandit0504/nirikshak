@@ -17,6 +17,7 @@ def main() -> None:
     rs = sub.add_parser("resummarize", help="re-score and rewrite the summary of saved reports (no re-analysis)")
     rs.add_argument("ids", nargs="*", help="report ids (default: all)")
     rs.add_argument("--retranslate", action="store_true", help="also redo all Hindi translations")
+    rs.add_argument("--recheck", action="store_true", help="also re-check SEBI registration (after sebi-sync)")
 
     s = sub.add_parser("serve", help="run the web API (and built frontend)")
     s.add_argument("--host", default="127.0.0.1")
@@ -52,11 +53,12 @@ def main() -> None:
 
         paths = [REPORTS_DIR / f"{i}.json" for i in args.ids] or sorted(REPORTS_DIR.glob("*.json"))
         for p in paths:
-            r = finalize(Report.model_validate_json(p.read_text(encoding="utf-8")), retranslate=args.retranslate)
+            r = finalize(Report.model_validate_json(p.read_text(encoding="utf-8")), retranslate=args.retranslate,
+                         recheck=args.recheck)
             save(r)
             for old in SPEECH_DIR.glob(f"{r.id}-*"):
                 old.unlink()  # cached audio of the old summary
-            print(f"{r.id}  {r.risk_score:>3} {r.risk_level:<6} {r.summary['en'].headline}")
+            print(f"{r.id}  {r.risk_score:>3} {r.risk_level:<6} {r.registry.verdict:<18} {r.source.channel}")
 
     elif args.cmd == "serve":
         import socket

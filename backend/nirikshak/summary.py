@@ -52,6 +52,9 @@ def top_concerns(claims: list[Claim], n: int = 5) -> list[Claim]:
 REGISTRATION = {
     "en": {
         "verified": "The creator's SEBI registration ({entity}, {reg}) was found in SEBI's official registry{typo}.",
+        "matched": "The creator was found in SEBI's register as a {cat}: {entity} ({reg}). The video does not quote the number, so confirm it on SEBI's website.",
+        "registered_other": "{entity} ({reg}) is registered with SEBI, but only as a {cat}. That registration does not allow giving investment advice or buy/sell tips.",
+        "guests_registered": "The channel itself is not registered as an adviser, but the guest expert {entity} is registered with SEBI as a {cat} ({reg}).",
         "number_not_found": "The registration number quoted ({nums}) does NOT exist in SEBI's registry of research analysts and investment advisers.",
         "claimed_unverified": "The creator claims to be SEBI-registered but gives no registration number that can be checked.",
         "possible_match": "A similarly named SEBI-registered entity exists ({entity}), but it could not be confirmed that it is this creator.",
@@ -61,9 +64,14 @@ REGISTRATION = {
         "disc_yes": " A risk disclaimer is present.",
         "disc_no": " No risk disclaimer was found in the video or its description.",
         "no_advice": " Registration only matters for creators who give buy/sell calls or promise returns, and this video does not.",
+        "no_advice_other": " This video gives no buy/sell tips or return promises, so that is not a concern here.",
+        "checked": " We checked {n} names, websites and numbers linked to this video.",
     },
     "hi": {
         "verified": "क्रिएटर SEBI में रजिस्टर्ड है ({entity}, {reg}){typo}।",
+        "matched": "क्रिएटर SEBI की सूची में {cat} के तौर पर मिला: {entity} ({reg})। वीडियो में नंबर नहीं बताया गया, इसलिए SEBI की वेबसाइट पर एक बार पक्का कर लें।",
+        "registered_other": "{entity} ({reg}) SEBI में रजिस्टर्ड है, लेकिन सिर्फ़ {cat} के तौर पर। इस रजिस्ट्रेशन से निवेश सलाह या खरीदने-बेचने की टिप देने की इजाज़त नहीं मिलती।",
+        "guests_registered": "चैनल खुद सलाहकार के तौर पर रजिस्टर्ड नहीं है, लेकिन गेस्ट एक्सपर्ट {entity} SEBI में {cat} के तौर पर रजिस्टर्ड हैं ({reg})।",
         "number_not_found": "वीडियो में बताया गया रजिस्ट्रेशन नंबर ({nums}) SEBI की रिसर्च एनालिस्ट और इन्वेस्टमेंट एडवाइज़र की सूची में है ही नहीं।",
         "claimed_unverified": "क्रिएटर कहता है कि वह SEBI में रजिस्टर्ड है, लेकिन कोई रजिस्ट्रेशन नंबर नहीं बताता जिसे जाँचा जा सके।",
         "possible_match": "SEBI की सूची में मिलता-जुलता एक नाम ({entity}) है, लेकिन यह पक्का नहीं हो सका कि यह यही क्रिएटर है।",
@@ -73,8 +81,17 @@ REGISTRATION = {
         "disc_yes": " वीडियो में जोखिम की चेतावनी (डिस्क्लेमर) दी गई है।",
         "disc_no": " वीडियो या उसके डिस्क्रिप्शन में जोखिम की कोई चेतावनी (डिस्क्लेमर) नहीं है।",
         "no_advice": " रजिस्ट्रेशन तभी ज़रूरी है जब कोई खरीदने-बेचने की टिप दे या रिटर्न का वादा करे, और यह वीडियो ऐसा नहीं करता।",
+        "no_advice_other": " यह वीडियो खरीदने-बेचने की टिप या रिटर्न का वादा नहीं करता, इसलिए यहाँ यह चिंता की बात नहीं है।",
+        "checked": " हमने इस वीडियो से जुड़े {n} नाम, वेबसाइट और नंबर जाँचे।",
     },
 }
+
+
+def display_name(name: str) -> str:
+    """'ZERODHA BROKING LIMITED' → 'Zerodha Broking Limited' (SEBI lists many names in capitals)."""
+    if name.isupper():
+        return " ".join(w if len(w) <= 3 and w in {"LLP", "OPC", "HUF", "AMC"} else w.capitalize() for w in name.split())
+    return name
 
 
 def gives_advice(claims: list[Claim]) -> bool:
@@ -82,16 +99,30 @@ def gives_advice(claims: list[Claim]) -> bool:
                for c in claims)
 
 
+CATEGORY_NAMES = {
+    "en": {"Research Analyst": "research analyst", "Investment Adviser": "investment adviser",
+           "Stock Broker": "stock broker", "Portfolio Manager": "portfolio manager", "Mutual Fund": "mutual fund"},
+    "hi": {"Research Analyst": "रिसर्च एनालिस्ट", "Investment Adviser": "इन्वेस्टमेंट एडवाइज़र",
+           "Stock Broker": "स्टॉक ब्रोकर", "Portfolio Manager": "पोर्टफोलियो मैनेजर", "Mutual Fund": "म्यूचुअल फंड"},
+}
+
+
 def registration_text(reg: RegistryCheck, channel: str, lang: str, advises: bool = True) -> str:
     t = REGISTRATION[lang]
-    hits = [h for h in reg.number_results.values() if h] or reg.name_matches
-    entity = hits[0].name if hits else ""
-    reg_no = hits[0].reg_no if hits else ""
+    hit = reg.entity or next((h for h in reg.number_results.values() if h), None) or \
+        (reg.name_matches[0] if reg.name_matches else None)
+    entity = display_name(hit.name) if hit else ""
+    reg_no = hit.reg_no if hit else ""
+    cat = CATEGORY_NAMES[lang].get(hit.category, hit.category) if hit else ""
     typo = t["typo"] if any(h and h.score < 100 for h in reg.number_results.values()) else ""
-    text = t[reg.verdict].format(entity=entity, reg=reg_no, typo=typo,
+    text = t[reg.verdict].format(entity=entity, reg=reg_no, typo=typo, cat=cat,
                                  nums=", ".join(reg.numbers_found), channel=channel or "this channel")
-    if reg.verdict == "not_registered" and not advises:
-        return text + t["no_advice"]
+    if reg.verdict == "not_registered":
+        text += t["checked"].format(n=len(reg.checks)) if reg.checks else ""
+        if not advises:
+            return text + t["no_advice"]
+    if reg.verdict == "registered_other" and not advises:
+        return text + t["no_advice_other"]
     return text + (t["disc_yes"] if reg.disclaimer_found else t["disc_no"])
 
 
@@ -141,7 +172,7 @@ def advice(claims: list[Claim], reg: RegistryCheck, lang: str) -> list[str]:
     if reg.verdict == "number_not_found":
         keys.append("fake_number")
     if "stock_tip" in cats:
-        keys.append("registered_tips" if reg.verdict == "verified" else "unregistered_tips")
+        keys.append("registered_tips" if reg.verdict in ("verified", "matched", "guests_registered") else "unregistered_tips")
     for k in ("guaranteed_returns", "price_prediction", "paid_group", "paid_promotion", "urgency_fomo"):
         if k in cats:
             keys.append(k)

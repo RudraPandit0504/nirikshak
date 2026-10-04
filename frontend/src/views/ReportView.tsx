@@ -301,54 +301,74 @@ function ClaimCard({ c, label, active, onSeek }: { c: Claim; label: string; acti
 function RegistryCard({ report }: { report: Report }) {
   const { t } = useLang()
   const r = report.registry
-  const good = r.verdict === 'verified'
-  const bad = r.verdict === 'number_not_found' || r.verdict === 'not_registered' || r.verdict === 'claimed_unverified'
+  const good = r.verdict === 'verified' || r.verdict === 'matched' || r.verdict === 'guests_registered'
+  const bad = ['number_not_found', 'not_registered', 'claimed_unverified', 'registered_other'].includes(r.verdict)
   const Icon = good ? BadgeCheck : bad ? BadgeX : ShieldQuestion
+  const typo = Object.values(r.number_results).some((h) => h && h.score < 100)
+  const checks = r.checks ?? []
   return (
     <div className="card">
       <p className="label">{t.registry}</p>
       <div className={`mt-3 flex items-start gap-3 rounded-xl p-3 ${good ? 'bg-emerald-500/10' : bad ? 'bg-red-500/10' : 'bg-amber-500/10'}`}>
         <Icon className={`size-6 shrink-0 ${good ? 'text-emerald-600' : bad ? 'text-red-600' : 'text-amber-600'}`} />
-        <div>
-          <p className="font-semibold">
-            {r.verdict === 'verified' && Object.values(r.number_results).some((h) => h && h.score < 100) ? t.verifiedTypo : t.verdict[r.verdict]}
-          </p>
+        <div className="min-w-0">
+          <p className="font-semibold">{r.verdict === 'verified' && typo ? t.verifiedTypo : t.verdict[r.verdict]}</p>
+          {r.entity && (
+            <p className="mt-1 text-sm font-medium">
+              {r.entity.name} · {t.catNames[r.entity.category] ?? r.entity.category}{' '}
+              <span className="font-mono text-xs text-slate-500">{r.entity.reg_no}</span>
+            </p>
+          )}
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{t.verdictHelp[r.verdict]}</p>
         </div>
       </div>
 
-      {r.numbers_found.length > 0 && (
+      {checks.length > 0 ? (
         <div className="mt-4">
-          <p className="text-xs font-semibold text-slate-500">{t.numbersQuoted}</p>
-          <ul className="mt-1 space-y-1 text-sm">
-            {r.numbers_found.map((n) => {
-              const hit = r.number_results[n]
+          <p className="text-xs font-semibold text-slate-500">{t.checked}</p>
+          <ul className="mt-2 space-y-2 text-sm">
+            {checks.map((c, i) => {
+              const h = c.hits[0]
               return (
-                <li key={n} className="flex flex-wrap items-center gap-x-2">
-                  {hit ? <BadgeCheck className="size-4 text-emerald-600" /> : <BadgeX className="size-4 text-red-600" />}
-                  <span className="font-mono">{n}</span>
-                  {hit && hit.reg_no !== n && (
-                    <span className="text-xs text-amber-600">→ {t.nearMatch} <span className="font-mono">{hit.reg_no}</span></span>
-                  )}
-                  {hit && <span className="truncate text-slate-500">· {hit.name}</span>}
+                <li key={i} className="flex gap-2">
+                  {h ? <BadgeCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <BadgeX className="mt-0.5 size-4 shrink-0 text-slate-400" />}
+                  <div className="min-w-0">
+                    <p className="truncate">
+                      <span className={c.kind === 'name' ? 'font-medium' : 'font-mono text-xs'}>{c.query}</span>
+                      <span className="text-xs text-slate-500"> · {t.roles[c.role] ?? c.role}</span>
+                    </p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {h ? (
+                        <>
+                          {h.how === 'near_number' && <span className="text-amber-600">{t.typoMatch} </span>}
+                          {h.name} · {t.catNames[h.category] ?? h.category} <span className="font-mono">{h.reg_no}</span>
+                        </>
+                      ) : t.notInRegister}
+                    </p>
+                  </div>
                 </li>
               )
             })}
           </ul>
         </div>
-      )}
-
-      {r.name_matches.length > 0 && (
-        <div className="mt-4">
-          <p className="text-xs font-semibold text-slate-500">{t.nameMatches}</p>
-          <ul className="mt-1 space-y-1 text-sm">
-            {r.name_matches.map((h) => (
-              <li key={h.reg_no} className="truncate">
-                <span className="font-mono text-xs">{h.reg_no}</span> · {h.name} <span className="text-slate-400">({Math.round(h.score)}%)</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      ) : (
+        r.numbers_found.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-slate-500">{t.numbersQuoted}</p>
+            <ul className="mt-1 space-y-1 text-sm">
+              {r.numbers_found.map((n) => {
+                const hit = r.number_results[n]
+                return (
+                  <li key={n} className="flex flex-wrap items-center gap-x-2">
+                    {hit ? <BadgeCheck className="size-4 text-emerald-600" /> : <BadgeX className="size-4 text-red-600" />}
+                    <span className="font-mono">{n}</span>
+                    {hit && <span className="truncate text-slate-500">· {hit.name}</span>}
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )
       )}
 
       <div className="mt-4 flex items-center justify-between text-sm">

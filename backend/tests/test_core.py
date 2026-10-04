@@ -108,11 +108,14 @@ def test_typo_number_verified_when_it_is_the_channels_own(monkeypatch):
     from nirikshak.models import Source
     from nirikshak.pipeline import check_registry
 
+    from nirikshak import identity
+
     monkeypatch.setattr(sebi, "lookup_number", partial(sebi.lookup_number, live=False))  # no network in tests
+    monkeypatch.setattr(identity, "extract_people", lambda *a: [])  # no LLM in tests
     src = Source(kind="youtube", channel="Rakesh Bansal", description="SEBI Registration Number:INH00008984")
-    reg = check_registry(src, [], "")
+    reg = check_registry(src, [], [])
     assert reg.verdict == "verified" and reg.number_results["INH00008984"].reg_no == "INH100008984"
-    fake = check_registry(Source(kind="youtube", channel="Random Tips Guru", description="SEBI reg INH00008984"), [], "")
+    fake = check_registry(Source(kind="youtube", channel="Random Tips Guru", description="SEBI reg INH00008984"), [], [])
     assert fake.verdict != "verified"
 
 
@@ -151,3 +154,30 @@ def test_speech_text_normalisation():
     # Latin words make the Hindi phonemizer switch language mid-sentence, so they are converted.
     assert "सेबी" in hi and "टेलीग्राम" in hi and "या" in hi and "गुना" in hi
     assert not any("a" <= ch.lower() <= "z" for ch in hi)
+
+
+
+def test_affiliate_domain_is_not_treated_as_the_creator():
+    from nirikshak import identity
+    desc = "Open a demat account: https://zerodha.com/open-account?c=XYZ  My site: https://ankurwarikoo.com"
+    assert identity.own_domains(desc, ["warikoo"]) == ["ankurwarikoo.com"]
+    assert identity.own_domains("https://zerodha.com/varsity", ["Zero1 by Zerodha"]) == ["zerodha.com"]
+
+
+def test_name_matching_is_strict_for_people():
+    assert sebi._norm("CA Rachana Phadke Ranade") == "rachana phadke ranade"
+    assert sebi.match_name("Random Tips Guru") == []
+    assert any(h.reg_no == "INH100008984" for h in sebi.match_name("Rakesh Bansal"))
+
+
+def test_verdict_prefers_adviser_and_flags_broker_only():
+    from nirikshak.identity import verdict
+    from nirikshak.models import IdentityCheck, RegistryHit
+    adv = RegistryHit(reg_no="INH1", name="A", category="Research Analyst", score=100, how="name")
+    brk = RegistryHit(reg_no="INZ1", name="B Broking", category="Stock Broker", score=100, how="name")
+    ch = lambda hits, role="channel": IdentityCheck(query="x", kind="name", role=role, source="channel", hits=hits)
+    assert verdict([ch([adv])], False)[0] == "matched"
+    assert verdict([ch([brk])], False)[0] == "registered_other"
+    assert verdict([ch([]), ch([adv], "guest")], False)[0] == "guests_registered"
+    num = IdentityCheck(query="INH9", kind="number", role="number", source="description", hits=[])
+    assert verdict([num, ch([])], True)[0] == "number_not_found"

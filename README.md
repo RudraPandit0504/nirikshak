@@ -35,7 +35,7 @@ Built for **SANGYAN 2026** (SNTC IIT (BHU) × SEBI × NSDL), Track E: *Misinform
 |---|---|
 | 🎯 **Timestamped claims** | Every flagged statement is quoted word-for-word with its timestamp. Clicking it jumps the embedded player to that moment. |
 | 🏷️ **8 harm categories** | Guaranteed returns · specific buy/sell calls · price predictions · urgency/FOMO · paid promotion/affiliate · paid Telegram/VIP groups · SEBI-registration claims · misleading/cherry-picked claims |
-| 🏛️ **Real SEBI registry check** | Mirrors SEBI's public RA + IA lists (3,300+ entities). Validates any `INH…`/`INA…` number quoted in the video or description, and fuzzy-matches the channel name. |
+| 🏛️ **Real SEBI registry check** | Mirrors 5 of SEBI's public registers (6,600+ entities: research analysts, investment advisers, portfolio managers, stock brokers, mutual funds). Checks every registration number quoted, the channel name, people the AI finds presenting or appearing as guest experts, and the creator's own website. Shows exactly what was checked. |
 | 🧾 **Disclaimer check** | Detects whether a risk disclaimer exists ("not SEBI registered", "for educational purposes", "subject to market risks", including Hindi variants). |
 | 🇮🇳 **Bharat-first** | Handles Hindi, English and Hinglish audio and captions. The UI, explanations and summaries are bilingual. |
 | 🔊 **Natural read-aloud** | The summary is spoken by a local neural voice (Kokoro-82M) in English or Hindi, for users who find reading hard. |
@@ -115,6 +115,19 @@ The design choices that matter:
   (रिटर्न, ग्रुप, टिप), short sentences. Without it the translation model produced textbook calques
   ("भुगतान किए गए समूह" for "paid group"). On 39 real report sentences, the style guide cut such stiff words
   from 4.75 to 0.28 per 100 words ([`eval/translate_eval.py`](backend/eval/translate_eval.py)).
+- **Finding the registration behind a video.** The channel name is often not the registered name, so
+  [`identity.py`](backend/nirikshak/identity.py) checks several identities:
+  1. every registration number in any SEBI format (`INH`, `INA`, `INZ`, `INP`, …; grouped digits allowed);
+  2. the channel name;
+  3. owners, presenters and guest experts the LLM extracts from the description and transcript (each must appear
+     verbatim, or it is dropped);
+  4. the creator's own website, matched against the e-mail and web domains SEBI lists. Only domains that resemble the
+     creator's name count, so an affiliate link to a broker doesn't make the creator "a broker".
+
+  The verdict separates *registered adviser/analyst*, *registered only as a broker/PMS/fund* (not allowed to give
+  tips), *guest expert registered*, and *not found*. On the saved test videos this turned five generic "not found"
+  results into specific answers: Zerodha → registered stock broker; Evening Investors → guest Sandip Sabharwal is a
+  registered research analyst. For privacy only the e-mail *domain* of registered entities is stored.
 - **Registry matching that resists typos.** Creators often mistype their own registration numbers. A quoted number
   that isn't in the registry is matched to registered numbers within 2 edits, but only accepted if it resolves to
   the channel's own registered name, because one typo can be close to several real registrations.
@@ -180,7 +193,7 @@ CLI:
 uv run nirikshak audit "https://www.youtube.com/watch?v=…"   # prints a report
 uv run nirikshak audit voice_note.opus -o report.json        # local file → Whisper
 uv run nirikshak sebi-sync                                   # refresh SEBI registry (~3 min)
-uv run nirikshak resummarize [--retranslate]                 # rebuild summaries (and Hindi) of saved reports
+uv run nirikshak resummarize [--retranslate] [--recheck]     # rebuild summaries / Hindi / SEBI check of saved reports
 uv run pytest                                                # unit tests (no GPU/network)
 ```
 
@@ -206,7 +219,8 @@ backend/nirikshak/
   transcribe.py   faster-whisper on CUDA, frees VRAM afterwards
   rules.py        multilingual lexical rules, disclaimer + registration-number detection
   analyse.py      windowing, LLM extraction, grounding, merge, summary, Hindi translation
-  sebi.py         SEBI RA/IA registry sync, number lookup, fuzzy name match
+  sebi.py         SEBI register mirror (5 lists), number / name / domain lookup
+  identity.py     who is behind a video: numbers, names, guests, websites → verdict
   pipeline.py     orchestration, registry verdict, scoring
   summary.py      structured brief (headline/overview by LLM, the rest from findings)
   tts.py          Kokoro read-aloud, speech-text normalisation, audio cache
@@ -228,7 +242,8 @@ frontend/src/     React + TypeScript + Tailwind UI
 ## Limitations and next steps
 
 - YouTube auto-captions for Hindi are noisy. Whisper is more accurate but slower, and `--whisper` forces it.
-- The registry covers RAs and IAs only. Stock brokers, mutual-fund distributors and others aren't checked yet.
+- Name matches can collide (two people with the same name), so the UI asks users to confirm the number on SEBI's
+  site. AMFI-registered mutual-fund distributors (ARN) aren't covered yet.
 - Next: a browser extension that shows the audit on YouTube itself; Instagram Reels support; Tamil, Telugu,
   Bengali and Marathi output via IndicTrans2; a larger labelled dataset built with volunteers.
 
