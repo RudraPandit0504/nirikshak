@@ -96,7 +96,7 @@ export default function App() {
                     <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#34c759] opacity-60" />
                     <span className="relative inline-flex size-2 rounded-full bg-[#34c759]" />
                   </span>
-                  {t.localBadge} · <span className="font-mono">{meta.model}</span> · {meta.registry_size.toLocaleString('en-IN')} {t.sebiEntities}
+                  {meta.provider && meta.provider !== 'ollama' ? t.hostedBadge : t.localBadge} · <span className="font-mono">{meta.model}</span> · {meta.registry_size.toLocaleString('en-IN')} {t.sebiEntities}
                 </span>
               )}
               <button
@@ -120,7 +120,7 @@ export default function App() {
         </header>
 
         <main key={route.name + ('id' in route ? route.id : '')} className="flex-1 animate-enter">
-          {route.name === 'home' && <Home />}
+          {route.name === 'home' && <Home hosted={!!meta?.provider && meta.provider !== 'ollama'} />}
           {route.name === 'job' && <Job id={route.id} />}
           {route.name === 'report' && <ReportView id={route.id} meta={meta} startAt={route.t} />}
           {route.name === 'profile' && <ProfileView id={route.id} meta={meta} />}

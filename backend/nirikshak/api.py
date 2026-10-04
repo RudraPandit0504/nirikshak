@@ -10,7 +10,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
@@ -28,6 +28,27 @@ app = FastAPI(title="Nirikshak", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 
 executor = ThreadPoolExecutor(max_workers=1)
+
+# When hosted with a shared API key, each visitor gets a small budget so the key can't be drained.
+HOSTED = llm.PROVIDER != "ollama"
+LIMITS = {"audit": (4, 3600), "message": (12, 3600), "profile": (1, 3600), "ask": (30, 3600)}
+_hits: dict[tuple[str, str], list[float]] = {}
+
+
+def _limit(request: Request, kind: str) -> None:
+    if not HOSTED:
+        return
+    import time as _t
+
+    ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+    n, window = LIMITS[kind]
+    now = _t.time()
+    with LOCK:
+        recent = [x for x in _hits.get((ip, kind), []) if now - x < window]
+        if len(recent) >= n:
+            raise HTTPException(429, "This public demo has a small hourly limit per visitor so the shared AI key "
+                                     "isn't used up. Please try again later, or run Nirikshak locally (see GitHub).")
+        _hits[(ip, kind)] = recent + [now]
 # job id -> list of events (dicts). Kept in memory; finished reports are on disk.
 JOBS: dict[str, list[dict]] = {}
 LOCK = threading.Lock()
@@ -73,14 +94,16 @@ def meta():
 
 
 @app.post("/api/audit")
-def audit_url(url: str = Form(...)):
+def audit_url(request: Request, url: str = Form(...)):
     if not url.startswith(("http://", "https://")):
         raise HTTPException(400, "Please paste a full YouTube link.")
+    _limit(request, "audit")
     return _start(url)
 
 
 @app.post("/api/audit/upload")
-async def audit_upload(file: UploadFile = File(...)):
+async def audit_upload(request: Request, file: UploadFile = File(...)):
+    _limit(request, "audit")
     up = WORK_DIR / f"upload-{uuid.uuid4().hex[:8]}"
     up.mkdir(parents=True)
     dest = up / Path(file.filename or "upload").name
@@ -96,8 +119,9 @@ async def audit_upload(file: UploadFile = File(...)):
 
 
 @app.post("/api/check-message")
-async def check_message(text: str = Form(""), save: bool = Form(True), image: UploadFile | None = File(None)):
-    """Check a forwarded WhatsApp/Telegram/SMS tip: pasted text, or a screenshot read by the local vision model."""
+async def check_message(request: Request, text: str = Form(""), save: bool = Form(True), image: UploadFile | None = File(None)):
+    """Check a forwarded WhatsApp/Telegram/SMS tip: pasted text, or a screenshot read by the vision model."""
+    _limit(request, "message")
     path = None
     if image is not None and image.filename:
         up = WORK_DIR / f"msg-{uuid.uuid4().hex[:8]}"
@@ -115,13 +139,14 @@ async def check_message(text: str = Form(""), save: bool = Form(True), image: Up
 
 
 @app.post("/api/profile")
-def profile_start(url: str = Form(...), n: int = Form(8)):
+def profile_start(request: Request, url: str = Form(...), n: int = Form(8)):
     """Audit a channel's recent videos (reusing existing reports) and build a trust profile."""
     from .profile import run_profile
 
     if not url.startswith(("http://", "https://")):
         raise HTTPException(400, "Paste a YouTube channel link or any video link from that channel.")
-    n = max(3, min(15, n))
+    n = max(3, min(5 if HOSTED else 15, n))
+    _limit(request, "profile")
     return _start(None, lambda progress, job: run_profile(url, n, progress))
 
 
@@ -206,11 +231,12 @@ class AskBody(BaseModel):
 
 
 @app.post("/api/reports/{rid}/ask")
-async def ask(rid: str, body: AskBody):
+async def ask(request: Request, rid: str, body: AskBody):
     """Answer a question about one report. Not queued behind audits: Ollama serialises
     requests itself, and a question shouldn't wait minutes for an audit to finish."""
     if not body.question.strip():
         raise HTTPException(400, "Empty question")
+    _limit(request, "ask")
     report = Report.model_validate_json(_report_path(rid).read_text(encoding="utf-8"))
     try:
         ans = await asyncio.get_running_loop().run_in_executor(

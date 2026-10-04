@@ -23,6 +23,7 @@ export interface CategoryInfo {
 
 export interface Meta {
   model: string
+  provider?: string
   stages: string[]
   categories: Record<Category, CategoryInfo>
   registry_size: number

@@ -10,7 +10,7 @@ import { Button } from '../components/ui/Button'
 import Segmented from '../components/ui/Segmented'
 import MessageForm from '../components/MessageForm'
 
-export default function Home() {
+export default function Home({ hosted = false }: { hosted?: boolean }) {
   const { t, lang } = useLang()
   const [mode, setMode] = useState<'video' | 'message' | 'creator'>('video')
   const [count, setCount] = useState<'5' | '8' | '12'>('8')
@@ -122,7 +122,7 @@ export default function Home() {
         )}
 
         <p className="mt-8 inline-flex items-center gap-2 text-xs text-ink-3">
-          <Lock className="size-3.5" /> {mode === 'message' ? t.msgPrivacy : t.privacy}
+          <Lock className="size-3.5" /> {hosted ? t.privacyHosted : mode === 'message' ? t.msgPrivacy : t.privacy}
         </p>
       </section>
 
