@@ -92,7 +92,9 @@ def extract_people(source: Source, segments: list[Segment]) -> list[dict]:
     ], PEOPLE_SCHEMA, num_predict=400)
     text = f"{source.channel}\n{source.title}\n{source.description}\n{transcript}".lower()
     out, seen = [], set()
-    for p in data.get("people", []):
+    for p in data.get("people") or []:
+        if not isinstance(p, dict):
+            continue
         name, written = (p.get("name") or "").strip(), (p.get("as_written") or "").strip()
         role = p.get("role", "speaker")
         if len(sebi._norm(name)) < 4 or sebi._norm(name) in seen or re.search(r"\d", name):

@@ -77,6 +77,8 @@ Rules:
 - Analysis is not advice: discussing a company's results, valuation, growth, margins, sector or risks, or giving a balanced view, is education. stock_tip needs an explicit instruction to buy, sell or hold a specific security, or an entry/target/stop-loss.
 - price_prediction needs a specific price or return presented as likely. Hedged views ("could", "may", "if", scenarios, bull/bear cases) are severity 1 with confidence at most 0.5.
 - A clearly disclosed sponsor, or the creator's own course, app or community mentioned in passing, is severity 1. Use severity 2+ only when viewers are pressured to pay or join.
+- guaranteed_returns needs a promise of FUTURE returns stated as certain ("guaranteed", "pakka", "100%", "will definitely double", a fixed % per month). Historical or average past returns quoted as data ("in the last 10 years SIPs gave 12%", "after 20% falls the 1-year average was +17%") are education, not a claim. General long-term views ("equity creates wealth over time", "SIP will make money in the long run") are severity 1 with confidence at most 0.5, unless a specific return is promised.
+- stock_tip needs a SPECIFIC security, index level or contract (a stock, a coin, "buy Nifty above 22,850"). Views on a whole asset class (gold, silver, equity, FDs) or on asset allocation are severity 1.
 - urgency_fomo needs explicit pressure to act now ("buy today", "last chance", "don't miss"), not just topical news.
 - If nothing qualifies, return {{"claims": []}}."""
 
@@ -168,7 +170,9 @@ def analyse_window(segments: list[Segment], idx: list[int], hints: list[RuleHit]
         data = _chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}], CLAIM_SCHEMA)
 
     claims = []
-    for c in data.get("claims", []):
+    for c in data.get("claims") or []:
+        if not isinstance(c, dict):  # cloud models without schema enforcement occasionally return strings
+            continue
         line = c.get("line")
         if line not in idx:
             # Model gave a bad line number: find the line that best contains the quote.
@@ -205,7 +209,9 @@ def analyse_description(description: str, hints: list[RuleHit], context: str) ->
             f"Focus on paid_promotion, paid_group, registration_claim and guaranteed_returns.\n\n{numbered}")
     data = _chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}], CLAIM_SCHEMA)
     out = []
-    for c in data.get("claims", []):
+    for c in data.get("claims") or []:
+        if not isinstance(c, dict):
+            continue
         if not any(_ground(c.get("quote", ""), l) >= 75 for l in lines) or not _plausible(c):
             continue
         try:
@@ -283,7 +289,7 @@ def _translate(texts: list[str]) -> list[str]:
         {"role": "system", "content": hindi.STYLE + TRANSLATE_RULES},
         {"role": "user", "content": numbered},
     ], TRANSLATE_SCHEMA, num_predict=200 + 150 * len(texts), model=HI_MODEL)
-    return [hindi.tidy(t) for t in data.get("hindi", [])]
+    return [hindi.tidy(t if isinstance(t, str) else str(t)) for t in data.get("hindi") or []]
 
 
 def run(segments: list[Segment], hits: list[RuleHit], description: str, context: str,
