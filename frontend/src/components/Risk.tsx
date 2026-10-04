@@ -7,7 +7,7 @@ export function RiskPill({ level, score }: { level: Level; score: number }) {
   const { t } = useLang()
   return (
     <span
-      className="glass-pill inline-flex h-7 items-center gap-1.5 px-2.5 text-xs font-semibold text-ink"
+      className="glass-pill inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 text-xs font-semibold text-ink"
       style={{ background: `color-mix(in oklab, ${LEVEL_HEX[level]} 22%, var(--glass-strong))` }}
     >
       <span className="size-2 rounded-full" style={{ background: LEVEL_HEX[level], boxShadow: `0 0 10px ${LEVEL_HEX[level]}` }} />

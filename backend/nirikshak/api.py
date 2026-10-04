@@ -145,7 +145,7 @@ def profile_start(request: Request, url: str = Form(...), n: int = Form(8)):
 
     if not url.startswith(("http://", "https://")):
         raise HTTPException(400, "Paste a YouTube channel link or any video link from that channel.")
-    n = max(3, min(5 if HOSTED else 15, n))
+    n = max(3, min(12 if HOSTED else 15, n))
     _limit(request, "profile")
     return _start(None, lambda progress, job: run_profile(url, n, progress))
 

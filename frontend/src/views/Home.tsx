@@ -69,14 +69,14 @@ export default function Home({ hosted = false }: { hosted?: boolean }) {
         <p className="mx-auto mt-6 max-w-2xl text-[clamp(1rem,1.6vw,1.15rem)] leading-relaxed text-ink-2">{mode === 'message' ? t.msgHeroSub : mode === 'creator' ? t.creatorHeroSub : t.heroSub}</p>
 
         <Segmented
-          className="mx-auto mt-10 w-full max-w-lg"
+          className="mx-auto mt-10 w-full max-w-xl"
           value={mode}
           onChange={setMode}
           label="Mode"
           options={[
-            { value: 'video', label: <><MonitorPlay className="size-4" /> {t.modeVideo}</> },
-            { value: 'message', label: <><MessageSquareWarning className="size-4" /> {t.modeMessage}</> },
-            { value: 'creator', label: <><UserSearch className="size-4" /> {t.modeCreator}</> },
+            { value: 'video', label: <><MonitorPlay className="hidden size-4 sm:block" /><span className="sm:hidden">{t.modeVideoShort}</span><span className="hidden sm:inline">{t.modeVideo}</span></> },
+            { value: 'message', label: <><MessageSquareWarning className="hidden size-4 sm:block" /><span className="sm:hidden">{t.modeMessageShort}</span><span className="hidden sm:inline">{t.modeMessage}</span></> },
+            { value: 'creator', label: <><UserSearch className="hidden size-4 sm:block" /> {t.modeCreator}</> },
           ]}
         />
 

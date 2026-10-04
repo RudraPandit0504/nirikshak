@@ -93,12 +93,12 @@ def img(s, name, x, y, w=None, h=None, crop=None):
 
 # 1 Title
 s = prs.slides.add_slide(BLANK); bg(s, DARK)
-img(s, "dark.png", 6.2, 0.0, h=7.5, crop=(160, 0, 1320, 900)).line.fill.background()
-shade = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(7.4), prs.slide_height)
-shade.fill.solid(); shade.fill.fore_color.rgb = DARK; shade.line.fill.background()
+# The whole home screen, framed, rather than a cropped strip.
+pic = img(s, "dark.png", 7.05, 1.55, w=5.75)
+pic.line.color.rgb = RGBColor(0x3A, 0x41, 0x55); pic.line.width = Pt(1.25)
 text(s, 0.7, 1.2, 6.5, 0.4, ["SANGYAN 2026  ·  TRACK A + TRACK E"], 13, ORANGE, True)
-text(s, 0.7, 1.75, 6.5, 1.3, ["Nirikshak  निरीक्षक"], 46, WHITE, True)
-text(s, 0.7, 3.05, 6.4, 1.8, ["Check before you trust.",
+text(s, 0.7, 1.75, 6.2, 1.3, ["Nirikshak  निरीक्षक"], 46, WHITE, True)
+text(s, 0.7, 3.05, 6.0, 1.8, ["Check before you trust.",
                               "An investor-protection auditor for forwarded WhatsApp tips, finfluencer videos and the creators behind them, checked against SEBI's registers, in Hindi and English."],
      18, RGBColor(0xD8, 0xDC, 0xE6), spacing=10)
 text(s, 0.7, 5.6, 6.4, 1.0, [[("Live demo  ", True, ORANGE), (LIVE, False, WHITE)], [("Code  ", True, ORANGE), (GH, False, WHITE)]], 14, spacing=6)

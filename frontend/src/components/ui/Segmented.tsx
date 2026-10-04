@@ -27,7 +27,7 @@ export default function Segmented<T extends string>({
             role="tab"
             aria-selected={o.value === value}
             onClick={() => onChange(o.value)}
-            className={`relative z-10 inline-flex items-center justify-center gap-1.5 px-3.5 font-semibold rounded-full transition-colors ${h} ${
+            className={`relative z-10 inline-flex min-w-0 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap px-2 sm:px-3.5 font-semibold rounded-full transition-colors [&_svg]:shrink-0 ${h} ${
               o.value === value ? 'text-ink' : 'text-ink-3 hover:text-ink-2'
             }`}
           >

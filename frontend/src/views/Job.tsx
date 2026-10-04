@@ -78,9 +78,9 @@ export default function Job({ id }: { id: string }) {
           </div>
           <h1 className="display mt-6 text-2xl sm:text-3xl">{title}</h1>
           {multi && multi.video > 0 && (
-            <p className="mt-2 inline-flex max-w-md items-center gap-2 rounded-full bg-[var(--glass-inset)] px-3 py-1 text-sm text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">
-              <span className="font-semibold text-ink">{t.videoOf.replace('{i}', String(multi.video)).replace('{n}', String(multi.videos))}</span>
-              {multi.title && <span className="truncate">· {multi.title}</span>}
+            <p className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full sm:max-w-md bg-[var(--glass-inset)] px-3 py-1 text-sm text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">
+              <span className="shrink-0 whitespace-nowrap font-semibold text-ink">{t.videoOf.replace('{i}', String(multi.video)).replace('{n}', String(multi.videos))}</span>
+              {multi.title && <span className="min-w-0 truncate">· {multi.title}</span>}
             </p>
           )}
           {!error && stage && msgs[stage] && (

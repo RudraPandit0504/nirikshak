@@ -63,7 +63,7 @@ export default function ProfileView({ id, meta }: { id: string; meta: Meta | nul
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {stats.map(([label, value]) => (
                 <div key={label} className="glass-inset px-3.5 py-3">
-                  <div className="display tabular text-2xl">{value}</div>
+                  <div className="display tabular whitespace-nowrap text-xl lg:text-2xl">{value}</div>
                   <div className="mt-0.5 text-xs text-ink-3">{label}</div>
                 </div>
               ))}
