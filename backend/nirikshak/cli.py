@@ -42,8 +42,15 @@ def main() -> None:
         print(f"Synced {sync()} registered entities.")
 
     elif args.cmd == "serve":
+        import socket
+
         import uvicorn
 
+        with socket.socket() as s:
+            if s.connect_ex((args.host, args.port)) == 0:
+                sys.exit(f"Port {args.port} is already in use (is Nirikshak already running?). "
+                         f"Stop the other process or use: nirikshak serve --port {args.port + 1}")
+        print(f"Nirikshak running at http://{args.host}:{args.port}")
         uvicorn.run("nirikshak.api:app", host=args.host, port=args.port)
 
 
