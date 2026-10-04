@@ -5,6 +5,7 @@ file, the audio goes to Whisper instead.
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -13,7 +14,7 @@ from pathlib import Path
 import httpx
 import yt_dlp
 
-from .config import MAX_DURATION
+from .config import DATA_DIR, MAX_DURATION
 from .models import Segment, Source
 
 YDL_BASE = {
@@ -22,6 +23,27 @@ YDL_BASE = {
     "skip_download": True,
     "js_runtimes": {"node": {}, "deno": {}},
 }
+
+# YouTube asks cloud servers (AWS, GCP, …) to "sign in to confirm you're not a bot". A hosted demo can
+# drop a Netscape-format cookies file from a logged-in browser here; it is picked up on the next request.
+COOKIES = Path(os.environ.get("NIRIKSHAK_YT_COOKIES", DATA_DIR / "youtube_cookies.txt"))
+
+
+def _ydl(extra: dict | None = None) -> dict:
+    opts = {**YDL_BASE, **(extra or {})}
+    if COOKIES.is_file():
+        opts["cookiefile"] = str(COOKIES)
+    return opts
+
+
+def _download_error(e: Exception, what: str) -> IngestError:
+    msg = str(e)
+    if "not a bot" in msg or "Sign in to confirm" in msg:
+        return IngestError("YouTube is blocking this server (it asks cloud servers to sign in). Try one of the "
+                           "audited videos below, upload the video file instead, or run Nirikshak on your own "
+                           "computer, where YouTube links work normally.")
+    return IngestError(f"Could not read the {what}: {msg}")
+
 
 YT_ID = re.compile(r"(?:v=|youtu\.be/|shorts/|embed/|live/)([A-Za-z0-9_-]{11})")
 
@@ -101,10 +123,10 @@ def fetch_youtube(url: str, workdir: Path, want_audio: bool = False) -> tuple[So
     if not vid:
         raise IngestError("That does not look like a YouTube link.")
     try:
-        with yt_dlp.YoutubeDL(YDL_BASE) as ydl:
+        with yt_dlp.YoutubeDL(_ydl()) as ydl:
             info = ydl.extract_info(f"https://www.youtube.com/watch?v={vid}", download=False)
     except yt_dlp.utils.DownloadError as e:
-        raise IngestError(f"Could not read the video: {e}") from e
+        raise _download_error(e, "video") from e
 
     duration = float(info.get("duration") or 0)
     if duration > MAX_DURATION:
@@ -126,7 +148,12 @@ def fetch_youtube(url: str, workdir: Path, want_audio: bool = False) -> tuple[So
     segments = None
     if not want_audio and (track := _pick_caption_track(info)):
         lang, cap_url = track
-        r = httpx.get(cap_url, timeout=30, follow_redirects=True)
+        jar = None
+        if COOKIES.is_file():
+            from http.cookiejar import MozillaCookieJar
+            jar = MozillaCookieJar(str(COOKIES))
+            jar.load(ignore_discard=True, ignore_expires=True)
+        r = httpx.get(cap_url, timeout=30, follow_redirects=True, cookies=jar)
         if r.status_code == 200:
             segments = _parse_json3(r.json())
             source.language = lang
@@ -139,12 +166,11 @@ def fetch_youtube(url: str, workdir: Path, want_audio: bool = False) -> tuple[So
 
 
 def download_audio(url: str, workdir: Path) -> Path:
-    opts = {
-        **YDL_BASE,
+    opts = _ydl({
         "skip_download": False,
         "format": "bestaudio/best",
         "outtmpl": str(workdir / "audio.%(ext)s"),
-    }
+    })
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
         raw = Path(ydl.prepare_filename(info))
@@ -199,7 +225,7 @@ def is_channel_url(url: str) -> bool:
 
 def list_channel_videos(url: str, n: int) -> tuple[dict, list[dict]]:
     """A channel's n most recent normal videos (newest first), from a channel URL or any of its video URLs."""
-    with yt_dlp.YoutubeDL({**YDL_BASE, "extract_flat": "in_playlist"}) as ydl:
+    with yt_dlp.YoutubeDL(_ydl({"extract_flat": "in_playlist"})) as ydl:
         if not is_channel_url(url):
             vid = youtube_id(url)
             if not vid:
@@ -213,7 +239,7 @@ def list_channel_videos(url: str, n: int) -> tuple[dict, list[dict]]:
         try:
             info = ydl.extract_info(f"{base}/videos", download=False)
         except yt_dlp.utils.DownloadError as e:
-            raise IngestError(f"Could not read the channel: {e}") from e
+            raise _download_error(e, "channel") from e
     videos = []
     for e in info.get("entries") or []:
         if len(videos) >= n:

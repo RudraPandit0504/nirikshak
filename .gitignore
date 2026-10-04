@@ -13,3 +13,4 @@ backend/data/*.sqlite
 SUBMISSION.md
 .~lock.*
 presentation/*.mp4
+backend/data/youtube_cookies.txt

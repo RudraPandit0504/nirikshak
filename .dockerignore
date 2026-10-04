@@ -9,3 +9,4 @@ backend/data/models
 backend/data/speech
 backend/data/*.sqlite
 .git
+backend/data/youtube_cookies.txt
