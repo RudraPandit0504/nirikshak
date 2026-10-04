@@ -88,8 +88,8 @@ export default function AskPanel({ reportId, isMessage = false, onSeek }: {
           <MessageCircleQuestion className="size-5" />
         </span>
         <div>
-          <h2 className="display text-xl">{t.askTitle}</h2>
-          <p className="mt-0.5 text-sm text-ink-2">{t.askSub}</p>
+          <h2 className="display text-xl">{isMessage ? t.askTitleMsg : t.askTitle}</h2>
+          <p className="mt-0.5 text-sm text-ink-2">{isMessage ? t.askSubMsg : t.askSub}</p>
         </div>
       </div>
 
@@ -152,7 +152,7 @@ export default function AskPanel({ reportId, isMessage = false, onSeek }: {
 
       {msgs.length === 0 && (
         <div className="mt-5 flex flex-wrap gap-2">
-          {t.askSuggest.map((s) => (
+          {(isMessage ? t.askSuggestMsg : t.askSuggest).map((s) => (
             <button key={s} onClick={() => send(s)} disabled={busy}
               className="glass-pill h-9 px-3.5 text-[13px] font-medium text-ink-2 transition hover:text-ink active:scale-95">
               {s}
@@ -168,7 +168,7 @@ export default function AskPanel({ reportId, isMessage = false, onSeek }: {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={mic === 'recording' ? t.askRecording : mic === 'transcribing' ? t.askTranscribing : t.askPlaceholder}
+          placeholder={mic === 'recording' ? t.askRecording : mic === 'transcribing' ? t.askTranscribing : isMessage ? t.askPlaceholderMsg : t.askPlaceholder}
           aria-label={t.askPlaceholder}
           disabled={mic !== 'idle'}
           className="min-w-0 flex-1 bg-transparent py-2 text-[15px] text-ink outline-none placeholder:text-ink-3"

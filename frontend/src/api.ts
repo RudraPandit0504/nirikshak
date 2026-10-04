@@ -52,6 +52,9 @@ export const fmtTime = (t: number) => {
   return `${h ? `${h}:` : ''}${mm}:${String(s).padStart(2, '0')}`
 }
 
+/** Position of a finding: "3:54" in a video, "L3" in a message (lines are numbered from 1). */
+export const fmtPos = (t: number, message: boolean, lineWord = 'L') => (message ? `${lineWord} ${Math.floor(t) + 1}` : fmtTime(t))
+
 export function askReport(id: string, question: string, lang: string, history: { role: string; text: string }[]) {
   return fetch(`/api/reports/${id}/ask`, {
     method: 'POST',
@@ -65,3 +68,13 @@ export function transcribeAudio(blob: Blob) {
   body.set('file', blob, 'question.webm')
   return fetch('/api/transcribe', { method: 'POST', body }).then((r) => json<{ text: string; language: string }>(r))
 }
+
+export function checkMessage(text: string, image: File | null, save: boolean) {
+  const body = new FormData()
+  if (image) body.set('image', image)
+  else body.set('text', text)
+  body.set('save', String(save))
+  return fetch('/api/check-message', { method: 'POST', body }).then((r) => json<{ job: string }>(r))
+}
+
+export const deleteReport = (id: string) => fetch(`/api/reports/${id}`, { method: 'DELETE' }).then((r) => json<{ deleted: string }>(r))

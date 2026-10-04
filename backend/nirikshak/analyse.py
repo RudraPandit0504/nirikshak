@@ -14,27 +14,39 @@ from .config import HI_MODEL, LLM_MODEL, OLLAMA_URL, WINDOW_SECONDS
 from .models import Claim, Segment
 from .rules import RuleHit
 
-CLAIM_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "claims": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "line": {"type": "integer"},
-                    "quote": {"type": "string"},
-                    "category": {"type": "string", "enum": list(CATEGORIES)},
-                    "severity": {"type": "integer", "minimum": 1, "maximum": 3},
-                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-                    "why_en": {"type": "string"},
+# Videos are judged on the original 8 categories (what the eval measures); forwarded
+# messages additionally get the scam-specific ones.
+MESSAGE_ONLY = ("credential_request", "suspicious_link", "upfront_payment", "impersonation")
+VIDEO_CATS = [c for c in CATEGORIES if c not in MESSAGE_ONLY]
+MESSAGE_CATS = list(CATEGORIES)
+
+
+def _claim_schema(cats: list[str]) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "claims": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "line": {"type": "integer"},
+                        "quote": {"type": "string"},
+                        "category": {"type": "string", "enum": cats},
+                        "severity": {"type": "integer", "minimum": 1, "maximum": 3},
+                        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                        "why_en": {"type": "string"},
+                    },
+                    "required": ["line", "quote", "category", "severity", "confidence", "why_en"],
                 },
-                "required": ["line", "quote", "category", "severity", "confidence", "why_en"],
-            },
-        }
-    },
-    "required": ["claims"],
-}
+            }
+        },
+        "required": ["claims"],
+    }
+
+
+CLAIM_SCHEMA = _claim_schema(VIDEO_CATS)
+MESSAGE_SCHEMA = _claim_schema(MESSAGE_CATS)
 
 TRANSLATE_SCHEMA = {
     "type": "object",
@@ -47,7 +59,7 @@ You read transcripts of finance videos by social-media "finfluencers" (Hindi, En
 and flag statements that could mislead or harm investors.
 
 Flag ONLY statements that fit one of these categories:
-{chr(10).join(f"- {k}: {v['prompt']}" for k, v in CATEGORIES.items())}
+{chr(10).join(f"- {k}: {CATEGORIES[k]['prompt']}" for k in VIDEO_CATS)}
 
 Rules:
 - Neutral education is NOT a claim. Explaining what a stop-loss is, describing risk, history, or how markets work must not be flagged.
@@ -138,15 +150,44 @@ def _plausible(c: dict) -> bool:
     return True
 
 
-def analyse_window(segments: list[Segment], idx: list[int], hints: list[RuleHit], context: str) -> list[Claim]:
-    lines = "\n".join(f"[{i}] ({_fmt(segments[i].start)}) {segments[i].text}" for i in idx)
+MESSAGE_SYSTEM = f"""You are Nirikshak, a fraud-awareness assistant that protects Indian retail investors.
+You read a message someone received on WhatsApp, Telegram or SMS (Hindi, English or Hinglish), often a
+forwarded "stock tip" or an alert claiming to be from a broker or regulator, and flag what could harm them.
+
+Flag ONLY text that fits one of these categories:
+{chr(10).join(f"- {k}: {CATEGORIES[k]['prompt']}" for k in MESSAGE_CATS)}
+
+Rules:
+- An ordinary personal or family message, or genuine market news without a push to act, is NOT a claim.
+- Merely MENTIONING SEBI, RBI, NSE or a broker (e.g. in news) is not impersonation. Impersonation is when the
+  sender claims to BE or to speak for them ("NSE Compliance Department", "assistant of a famous investor"),
+  or threatens action on the reader's account.
+- A bank's or app's own notification that contains an OTP and says not to share it is NOT a credential request.
+- "quote" must be copied verbatim from the given line (short span). Never invent text.
+- "line" is the number in square brackets of the line containing the quote.
+- severity: 3 = direct risk of losing money or account access (OTP/PIN request, payment demand, guarantees,
+  fake regulator), 2 = strong pressure, hype or a suspicious link, 1 = mild.
+- confidence: how sure you are this really is a warning sign in context (0-1).
+- why_en: one plain-English sentence explaining to the reader why this is a warning sign.
+- Never judge whether a stock is good or bad, and never give investment advice.
+- If nothing qualifies, return {{"claims": []}}."""
+
+
+def analyse_window(segments: list[Segment], idx: list[int], hints: list[RuleHit], context: str,
+                   message: bool = False) -> list[Claim]:
+    fmt = (lambda t: f"line {int(t) + 1}") if message else _fmt
+    lines = "\n".join(f"[{i}] ({fmt(segments[i].start)}) {segments[i].text}" for i in idx)
     hint_txt = ""
     if hints:
         hint_txt = "\n\nKeyword scanner hints (may be false positives; confirm or ignore):\n" + "\n".join(
-            f"- line near {_fmt(h.start)}: '{h.match}' -> {h.category}" for h in hints
+            f"- {fmt(h.start)}: '{h.match}' -> {h.category}" for h in hints
         )
-    user = f"Video context: {context}\n\nTranscript lines:\n{lines}{hint_txt}"
-    data = _chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}], CLAIM_SCHEMA)
+    if message:
+        user = f"Message lines:\n{lines}{hint_txt}"
+        data = _chat([{"role": "system", "content": MESSAGE_SYSTEM}, {"role": "user", "content": user}], MESSAGE_SCHEMA)
+    else:
+        user = f"Video context: {context}\n\nTranscript lines:\n{lines}{hint_txt}"
+        data = _chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}], CLAIM_SCHEMA)
 
     claims = []
     for c in data.get("claims", []):
@@ -200,7 +241,12 @@ def analyse_description(description: str, hints: list[RuleHit], context: str) ->
     return out
 
 
-def merge(claims: list[Claim], hits: list[RuleHit]) -> list[Claim]:
+# In written messages these patterns (short links, APKs, UPI handles, "share the OTP") are objective,
+# unlike paraphrased speech, so unconfirmed rule hits count with more confidence there.
+OBJECTIVE_MESSAGE_RULES = {"credential_request", "suspicious_link", "upfront_payment"}
+
+
+def merge(claims: list[Claim], hits: list[RuleHit], message: bool = False) -> list[Claim]:
     """Dedupe LLM claims and fold in rule hits the LLM did not cover."""
     merged: list[Claim] = []
     for c in sorted(claims, key=lambda c: (c.where, c.start, -c.severity)):
@@ -225,7 +271,8 @@ def merge(claims: list[Claim], hits: list[RuleHit]) -> list[Claim]:
             info = CATEGORIES[h.category]
             merged.append(Claim(
                 start=h.start, end=h.end, quote=h.match if h.where == "transcript" else h.text[:160],
-                category=h.category, severity=h.severity, confidence=0.4,
+                category=h.category, severity=h.severity,
+                confidence=0.6 if message and h.category in OBJECTIVE_MESSAGE_RULES else 0.4,
                 why_en=info["about_en"], why_hi=info["about_hi"], origin="rules", where=h.where,
             ))
     return sorted(merged, key=lambda c: (c.where != "transcript", c.start))

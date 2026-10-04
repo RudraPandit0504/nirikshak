@@ -14,6 +14,10 @@ export const CAT_COLOR: Record<Category, string> = {
   paid_group: 'bg-[#5856d6]',
   registration_claim: 'bg-[#32ade6]',
   misleading_claim: 'bg-[#ff6482]',
+  credential_request: 'bg-[#bf1029]',
+  suspicious_link: 'bg-[#a2845e]',
+  upfront_payment: 'bg-[#ff6b00]',
+  impersonation: 'bg-[#8e44ad]',
 }
 
 export const LEVEL_HEX: Record<'low' | 'medium' | 'high', string> = { low: '#34c759', medium: '#ff9f0a', high: '#ff3b30' }

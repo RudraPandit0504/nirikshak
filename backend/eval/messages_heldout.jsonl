@@ -1,0 +1,10 @@
+{"id": "mh_loan_app", "lang": "en", "expect": ["upfront_payment", "suspicious_link"], "lines": ["Instant trading credit of ₹50,000 approved!", "Install the app from https://cutt.ly/fastcredit and pay ₹499 processing fee to activate."]}
+{"id": "mh_hi_otp_ask", "lang": "hi", "expect": ["credential_request", "impersonation"], "lines": ["मैं आपके बैंक से बोल रहा हूँ, आपका केवाईसी एक्सपायर हो गया है।", "अभी आपके फ़ोन पर आया ओटीपी बताइए वरना खाता बंद हो जाएगा।"]}
+{"id": "mh_famous_investor", "lang": "en", "expect": ["impersonation", "paid_group", "guaranteed_returns"], "lines": ["Hello, I am the assistant of a famous investor running a free stock study group.", "Members earn 20% monthly with his picks, guaranteed.", "Add our WhatsApp group: chat.whatsapp.com/AbCdEf123"]}
+{"id": "mh_hinglish_tip", "lang": "hinglish", "expect": ["stock_tip", "urgency_fomo"], "lines": ["Kal market khulte hi IRFC kharid lo, target 250, SL 180.", "Jaldi karo, operator wala move hai, baad mein mat kehna bataya nahi."]}
+{"id": "mh_nse_fake", "lang": "en", "expect": ["impersonation", "upfront_payment"], "lines": ["NSE Compliance Department: your trading account is under review.", "Deposit a refundable security of ₹10,000 to the account given below within 2 hours."]}
+{"id": "mh_clean_dividend", "lang": "en", "expect": [], "lines": ["Dividend of ₹8 per share has been credited to your bank account for your holding in ITC Ltd."]}
+{"id": "mh_clean_hi_news", "lang": "hi", "expect": [], "lines": ["सेबी ने आज म्यूचुअल फंड नियमों में बदलाव की घोषणा की।", "नए नियम अगले साल अप्रैल से लागू होंगे।"]}
+{"id": "mh_clean_upi_receipt", "lang": "en", "expect": [], "lines": ["You have received ₹2,500 from Rahul via UPI. UPI Ref No 412345678901."]}
+{"id": "mh_clean_friend", "lang": "hinglish", "expect": [], "lines": ["Bhai kal cricket khelne chalega?", "Shaam 5 baje ground pe milte hain."]}
+{"id": "mh_crypto_mining", "lang": "en", "expect": ["guaranteed_returns", "upfront_payment"], "lines": ["USDT mining plan: invest $100 and get $3 daily profit, zero risk.", "Send USDT to the wallet address below to activate your plan."]}

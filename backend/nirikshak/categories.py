@@ -57,4 +57,32 @@ CATEGORIES = {
         "about_hi": "सिर्फ़ मुनाफे वाले ट्रेड दिखाना, प्रॉफिट के ऐसे स्क्रीनशॉट जिन्हें जाँचा न जा सके, या किसी तरीके को ऐसे बताना जैसे उसमें कभी नुकसान नहीं होगा।",
         "prompt": "showcasing only profits, unverifiable P&L screenshots as proof, claims a strategy 'always works', misrepresenting risk",
     },
+    "credential_request": {
+        "en": "Asks for OTP, PIN or remote access",
+        "hi": "OTP, PIN या फ़ोन का कंट्रोल माँगना",
+        "about_en": "No bank, broker, SEBI or depository will ever ask for your OTP, PIN, password, or ask you to install a screen-sharing app like AnyDesk.",
+        "about_hi": "कोई भी बैंक, ब्रोकर, SEBI या डिपॉज़िटरी कभी आपका OTP, PIN या पासवर्ड नहीं माँगेगा, न ही AnyDesk जैसा स्क्रीन-शेयरिंग ऐप डलवाएगा।",
+        "prompt": "asks the reader to share an OTP, PIN, UPI PIN, password or CVV, or to install a screen-sharing/remote-access app",
+    },
+    "suspicious_link": {
+        "en": "Suspicious link or app download",
+        "hi": "संदिग्ध लिंक या ऐप डाउनलोड",
+        "about_en": "Fake trading apps (often .apk files) and shortened links are a common way to steal money and data. Install apps only from official app stores.",
+        "about_hi": "नकली ट्रेडिंग ऐप (अक्सर .apk फ़ाइल) और छोटे लिंक से पैसे और डेटा चुराए जाते हैं। ऐप सिर्फ़ आधिकारिक ऐप स्टोर से ही डालें।",
+        "prompt": "pushes an APK download, an unknown trading app, or a shortened / suspicious link",
+    },
+    "upfront_payment": {
+        "en": "Upfront payment or fee",
+        "hi": "पहले पैसे या फ़ीस माँगना",
+        "about_en": "Being asked to pay a joining, activation or 'withdrawal' fee, or to send money to a personal UPI ID or QR code, is a classic trap. Registered firms don't collect money this way.",
+        "about_hi": "जुड़ने, एक्टिवेशन या 'पैसे निकालने' के लिए फ़ीस माँगना, या किसी निजी UPI ID या QR कोड पर पैसे भेजने को कहना, ठगी का आम तरीका है। रजिस्टर्ड कंपनियाँ ऐसे पैसे नहीं लेतीं।",
+        "prompt": "asks for a fee to join, unlock, activate or withdraw, or to send money to a UPI ID / QR / personal account",
+    },
+    "impersonation": {
+        "en": "Pretends to be an official or a known firm",
+        "hi": "किसी अधिकारी या जानी-मानी कंपनी होने का दिखावा",
+        "about_en": "Scammers pose as SEBI, NSE, a well-known broker or a famous investor, or threaten that your account will be blocked unless you 'update KYC'. Verify through the official website or app only.",
+        "about_hi": "ठग खुद को SEBI, NSE, कोई बड़ा ब्रोकर या मशहूर निवेशक बताते हैं, या धमकी देते हैं कि 'KYC अपडेट' नहीं किया तो खाता बंद हो जाएगा। सिर्फ़ आधिकारिक वेबसाइट या ऐप से ही जाँचें।",
+        "prompt": "claims to be from SEBI, NSE, BSE, a broker, bank or famous investor, or threatens account blocking / KYC expiry",
+    },
 }

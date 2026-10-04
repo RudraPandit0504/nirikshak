@@ -26,12 +26,18 @@ def load(name: str) -> list[dict]:
     return [json.loads(l) for l in (HERE / f"{name}.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
 
 
-def predict(case: dict, rules_only: bool, threshold: float) -> set[str]:
-    segs = [Segment(start=i * 5.0, end=i * 5.0 + 5, text=t) for i, t in enumerate(case["lines"])]
-    hits = rules.scan_segments(segs)
+def predict(case: dict, rules_only: bool, threshold: float, message: bool = False) -> set[str]:
+    if message:  # messages: one line per segment, start = line index, as in the app
+        segs = [Segment(start=float(i), end=float(i + 1), text=t) for i, t in enumerate(case["lines"])]
+    else:
+        segs = [Segment(start=i * 5.0, end=i * 5.0 + 5, text=t) for i, t in enumerate(case["lines"])]
+    hits = rules.scan_segments(segs, message=message)
     if rules_only:
         return {h.category for h in hits}
-    claims = analyse.merge(analyse.analyse_window(segs, list(range(len(segs))), hits, "eval snippet"), hits)
+    claims = analyse.merge(analyse.analyse_window(segs, list(range(len(segs))), hits, "eval snippet", message=message), hits, message=message)
+    if message:
+        from nirikshak.identity import impersonation_findings
+        claims += impersonation_findings(segs)
     return {c.category for c in claims if c.confidence >= threshold}
 
 
@@ -39,7 +45,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--rules-only", action="store_true")
     ap.add_argument("--threshold", type=float, default=0.5)
-    ap.add_argument("--set", default="cases", choices=["cases", "heldout"],
+    ap.add_argument("--set", default="cases", choices=["cases", "heldout", "messages", "messages_heldout"],
                     help="'cases' was used while developing prompts/rules; 'heldout' was written before tuning and not used for it")
     ap.add_argument("--json", type=Path, help="append a results row to this JSON file")
     args = ap.parse_args()
@@ -50,7 +56,7 @@ def main() -> None:
     t0 = time.perf_counter()
     for case in cases:
         exp = set(case["expect"])
-        got = predict(case, args.rules_only, args.threshold)
+        got = predict(case, args.rules_only, args.threshold, message=args.set.startswith("messages"))
         tp += len(exp & got)
         fp += len(got - exp)
         fn += len(exp - got)

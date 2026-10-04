@@ -31,7 +31,7 @@ RULES: list[Rule] = [
         r"risk[\s-]*free\s*(return|profit|trading|income)",
         r"\bno\s*risk\b",
         r"(100|सौ)\s*(%|percent|प्रतिशत|परसेंट)\s*(safe|profit|guarantee|sure|सेफ|प्रॉफिट|गारंटी)",
-        r"pakka\s*(munafa|profit|return)",
+        r"pac?kk?a\s*(munafa|profit|return)",
         r"(गारंटी|गारंटीड|गारंटेड)\s*(\S+\s*){0,2}(रिटर्न|प्रॉफिट|मुनाफा|कमाई|इनकम)",
         r"(पक्का|पक्की)\s*(मुनाफा|प्रॉफिट|रिटर्न|कमाई)",
         r"(पैसा|पैसे)\s*डबल|double\s*(your)?\s*(money|capital)|paisa\s*double",
@@ -91,6 +91,41 @@ RULES: list[Rule] = [
     ),
 ]
 
+# Message-scam patterns (forwarded WhatsApp/Telegram/SMS tips), ported from Kavach.
+MESSAGE_RULES: list[Rule] = [
+    # Mentioning an OTP is not asking for one ("123456 is your OTP. Do not share it."), so these
+    # need an ask-verb next to the secret and no "do not / never / मत" in front of it.
+    *_r("credential_request", 3,
+        r"(?<!not )(?<!never )(?<!n't )\b(share|send|tell|give|forward|enter|provide|type|confirm)\s+(\w+\s+){0,3}(otp|upi\s*pin|m?pin|cvv|password)\b",
+        r"\b(otp|upi\s*pin|m?pin|cvv|password)\s+(\w+\s+){0,2}(share|send|bhej|batao|bataiye|bata\s*do|de\s*do|dijiye|enter)\b",
+        r"\b(anydesk|teamviewer|quick\s*support|rustdesk|airdroid)\b",
+        r"\bscreen\s*shar(e|ing)\b",
+        r"(ओटीपी|पिन|पासवर्ड)\s*(\S+\s*){0,2}(बताइए|बताएं|बताओ|बता\s*दें|भेजें|भेजो|शेयर\s*करें|दीजिए)",
+    ),
+    *_r("suspicious_link", 2,
+        r"\.apk\b",
+        r"\b(bit\.ly|tinyurl\.com|cutt\.ly|rb\.gy|shorturl\.at|is\.gd|t\.ly|tiny\.cc|ow\.ly)/",
+        r"\b(download|install)\s+(this|our|the|my)?\s*(app|application|apk)\b",
+        r"(ऐप|एप)\s*(डाउनलोड|इंस्टॉल)\s*(करें|करो|कीजिए)",
+        r"\bclick\s*(here|this\s*link|the\s*link|below)\b",
+    ),
+    *_r("upfront_payment", 3,
+        r"\b(registration|joining|membership|activation|processing|withdrawal|unlock|gst|tax)\s*(fee|fees|charge|charges|amount)\b",
+        r"\b(pay|send|transfer|deposit)\s*(₹|rs\.?|inr)?\s*\d[\d,]*\s*(to|on|via|first|now)?",
+        r"\b(upi\s*id|qr\s*code|scan\s*(the|this)?\s*qr)\b",
+        r"[\w.-]+@(ybl|okaxis|okhdfcbank|oksbi|okicici|paytm|ibl|axl|upi|apl)\b",
+        r"(फ़ीस|फीस|शुल्क)\s*(जमा|भरें|भेजें|दें)|(पैसे|रुपये)\s*(भेजें|भेजो|जमा\s*करें)",
+    ),
+    *_r("impersonation", 2,
+        r"\b(from|by|on behalf of)\s+(sebi|nse|bse|nsdl|cdsl|rbi)\b",
+        r"\b(sebi|nse|bse|nsdl|cdsl)\s*(official|officer|department|team|notice|helpdesk|support)\b",
+        r"\b(kyc)\s*(update|expired?|pending|verification|suspended)\b|\bupdate\s*(your)?\s*kyc\b",
+        r"\b(demat|trading|bank)?\s*account\s*(will\s*be\s*)?(blocked|suspended|frozen|closed|deactivated)\b",
+        r"(खाता|अकाउंट)\s*(बंद|ब्लॉक|सस्पेंड)\s*(हो\s*जाएगा|कर\s*दिया\s*जाएगा)|केवाईसी\s*(अपडेट|एक्सपायर)",
+        r"\b(institutional|fpi|qib)\s*(account|quota|trading)\b",
+    ),
+]
+
 DISCLAIMER_PATTERNS = [re.compile(p, re.IGNORECASE) for p in (
     r"\bnot\s*(a\s*)?sebi\s*registered\b",
     r"\b(for\s*)?educational\s*purposes?\s*only\b",
@@ -122,11 +157,12 @@ class RuleHit:
     where: str = "transcript"
 
 
-def scan_segments(segments: list[Segment]) -> list[RuleHit]:
+def scan_segments(segments: list[Segment], message: bool = False) -> list[RuleHit]:
+    rules = RULES + MESSAGE_RULES if message else RULES
     hits: list[RuleHit] = []
     for seg in segments:
         seen = set()
-        for rule in RULES:
+        for rule in rules:
             if rule.category in seen:
                 continue
             if m := rule.pattern.search(seg.text):

@@ -13,6 +13,10 @@ Category = Literal[
     "paid_group",
     "registration_claim",
     "misleading_claim",
+    "credential_request",
+    "suspicious_link",
+    "upfront_payment",
+    "impersonation",
 ]
 
 
@@ -23,7 +27,7 @@ class Segment(BaseModel):
 
 
 class Source(BaseModel):
-    kind: Literal["youtube", "upload"]
+    kind: Literal["youtube", "upload", "message"]
     url: str | None = None
     video_id: str | None = None
     title: str = ""
@@ -109,5 +113,6 @@ class Report(BaseModel):
     summary_en: str
     summary_hi: str
     summary: dict[str, Summary] | None = None  # {"en": …, "hi": …}
+    private: bool = False  # message checks the user chose not to keep in history
     model: str
     timings: dict[str, float]

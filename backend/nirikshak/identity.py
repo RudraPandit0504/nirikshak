@@ -77,7 +77,8 @@ def extract_people(source: Source, segments: list[Segment]) -> list[dict]:
     transcript = _context(source, segments)
     data = _chat([
         {"role": "system", "content": (
-            "From a finance video's details, list the people or companies who OWN or RUN the channel, who are "
+            "From a finance video's or message's details, list the people or companies who OWN or RUN the channel "
+            "or SENT the message, who are "
             "SPEAKING/presenting, or who appear as GUEST experts giving views. Do NOT list companies or stocks "
             "being discussed, brokers or apps merely promoted, or famous people only mentioned in passing.\n"
             "For each: name = the name in English letters (transliterate Hindi names, e.g. राकेश बंसल → Rakesh Bansal); "
@@ -185,3 +186,47 @@ def verdict(checks: list[IdentityCheck], claims_registration: bool) -> tuple[str
     if claims_registration:
         return "claimed_unverified", None
     return ("not_registered", None) if sebi.registry_size() else ("unknown", None)
+
+
+
+# Official web domains of entities scammers most often impersonate. A message that uses one of
+# these names but links elsewhere is a strong impersonation signal.
+OFFICIAL_DOMAINS = {
+    "zerodha": {"zerodha.com", "kite.trade"}, "groww": {"groww.in"}, "upstox": {"upstox.com"},
+    "angel one": {"angelone.in", "angelbroking.com"}, "icici direct": {"icicidirect.com"},
+    "hdfc securities": {"hdfcsec.com"}, "kotak securities": {"kotaksecurities.com"},
+    "paytm money": {"paytmmoney.com"}, "5paisa": {"5paisa.com"}, "motilal oswal": {"motilaloswal.com"},
+    "sharekhan": {"sharekhan.com"}, "dhan": {"dhan.co"},
+    "sebi": {"sebi.gov.in"}, "nse": {"nseindia.com"}, "bse": {"bseindia.com"},
+    "nsdl": {"nsdl.co.in", "nsdl.com"}, "cdsl": {"cdslindia.com"}, "rbi": {"rbi.org.in"},
+}
+
+
+def impersonation_findings(segments: list[Segment]) -> list:
+    """Message names a well-known broker/regulator but links to a domain that isn't theirs."""
+    from .models import Claim
+
+    text = " ".join(s.text for s in segments).lower()
+    brands = [b for b in OFFICIAL_DOMAINS if re.search(rf"\b{re.escape(b)}\b", text)]
+    if not brands:
+        return []
+    official = set().union(*(OFFICIAL_DOMAINS[b] for b in brands))
+    out = []
+    for seg in segments:
+        for m in URL_OR_MAIL.finditer(seg.text):
+            # Skip e-mail addresses and UPI handles (kyc.help@ybl): the part before "@" is not a website.
+            if "@" in m.group(0) or seg.text[m.end():m.end() + 1] == "@":
+                continue
+            d = sebi.domain_of(m.group(0))
+            if not d or "." not in d or d in official:
+                continue
+            names = ", ".join(b.upper() if len(b) <= 4 else b.title() for b in brands)
+            out.append(Claim(
+                start=seg.start, end=seg.end, quote=m.group(0)[:120], category="impersonation", severity=3,
+                confidence=0.85, origin="rules", where="transcript",
+                why_en=(f"The message uses the name {names} but links to {d}, which is not their official website "
+                        f"({', '.join(sorted(official))}). This is a common impersonation trick."),
+                why_hi=(f"मैसेज में {names} का नाम है, लेकिन लिंक {d} का है, जो उनकी आधिकारिक वेबसाइट "
+                        f"({', '.join(sorted(official))}) नहीं है। नकली पहचान से ठगी का यह आम तरीका है।"),
+            ))
+    return out

@@ -9,6 +9,10 @@ export type Category =
   | 'paid_group'
   | 'registration_claim'
   | 'misleading_claim'
+  | 'credential_request'
+  | 'suspicious_link'
+  | 'upfront_payment'
+  | 'impersonation'
 
 export interface CategoryInfo {
   en: string
@@ -104,7 +108,7 @@ export interface Report {
   id: string
   created_at: string
   source: {
-    kind: 'youtube' | 'upload'
+    kind: 'youtube' | 'upload' | 'message'
     url: string | null
     video_id: string | null
     title: string
@@ -128,6 +132,7 @@ export interface Report {
 
 export interface ReportListItem {
   id: string
+  kind?: 'youtube' | 'upload' | 'message'
   title: string
   channel: string
   video_id: string | null

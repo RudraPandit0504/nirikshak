@@ -204,7 +204,8 @@ def test_advice_questions_are_detected_but_factual_ones_are_not():
     from nirikshak.qa import ADVICE_RE
     for q in ["Should I buy these coins?", "Will this stock double next year?", "क्या मुझे यह शेयर खरीदना चाहिए?"]:
         assert ADVICE_RE.search(q), q
-    for q in ["Which stock does he recommend?", "How can I contact him?", "Did he promise guaranteed returns?"]:
+    for q in ["Which stock does he recommend?", "How can I contact him?", "Did he promise guaranteed returns?",
+              "Should I share the OTP?", "क्या मुझे उनका माँगा OTP बताना चाहिए?", "kya mujhe link kholna chahiye"]:
         assert not ADVICE_RE.search(q), q
 
 
@@ -217,3 +218,34 @@ def test_answer_cleaning_and_citation_grounding(monkeypatch):
     monkeypatch.setattr(qa, "_chat", lambda *a, **k: next(replies))
     a = qa.ask(r, "Which stock does he recommend?")
     assert a.kind == "video" and [c.line for c in a.citations] == [1] and "[L1]" not in a.answer
+
+
+def _mcats(text):
+    return {h.category for h in rules.scan_segments([Segment(start=0, end=1, text=text)], message=True)}
+
+
+def test_message_rules_tell_requests_from_mentions():
+    assert "credential_request" in _mcats("please share the OTP to complete verification")
+    assert "credential_request" in _mcats("अभी आपके फ़ोन पर आया ओटीपी बताइए")
+    assert "credential_request" not in _mcats("123456 is your OTP for login. Do not share it with anyone.")
+    assert "upfront_payment" in _mcats("Pay ₹999 joining fee to guru@ybl")
+    assert "suspicious_link" in _mcats("Download from http://x.com/app.apk")
+    assert "impersonation" in _mcats("Your demat account will be blocked, update KYC now")
+    # message-only categories never fire on video transcripts
+    assert not {"credential_request", "upfront_payment"} & cats("please share the OTP, pay ₹999 joining fee")
+
+
+def test_impersonation_by_domain_ignores_upi_handles():
+    from nirikshak.identity import impersonation_findings
+    segs = [Segment(start=0, end=1, text="Zerodha KYC: verify at http://zerodha-kyc-update.in/verify"),
+            Segment(start=1, end=2, text="Pay ₹99 to kyc.help@ybl"),
+            Segment(start=2, end=3, text="Official site https://zerodha.com")]
+    found = impersonation_findings(segs)
+    assert [c.start for c in found] == [0.0] and "zerodha-kyc-update.in" in found[0].why_en
+
+
+def test_message_advice_covers_scam_categories():
+    from nirikshak import summary
+    adv = summary.advice([_claim("credential_request"), _claim("upfront_payment")], _reg(), "en")
+    assert any("OTP" in a for a in adv) and any("UPI" in a for a in adv)
+    assert not any("No major warning signs" in a for a in adv)

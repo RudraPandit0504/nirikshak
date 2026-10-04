@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, AudioLines, Clock, FileAudio, Languages, Link2, Loader2, Lock, ShieldCheck, Upload } from 'lucide-react'
+import { ArrowRight, AudioLines, Clock, FileAudio, Languages, Link2, Loader2, Lock, MessageSquareWarning, ShieldCheck, Upload, MonitorPlay } from 'lucide-react'
 import { listReports, startUpload, startUrl } from '../api'
 import { go } from '../ui'
 import { useLang } from '../i18n'
@@ -7,9 +7,12 @@ import type { ReportListItem } from '../types'
 import { RiskPill } from '../components/Risk'
 import Glass from '../components/ui/Glass'
 import { Button } from '../components/ui/Button'
+import Segmented from '../components/ui/Segmented'
+import MessageForm from '../components/MessageForm'
 
 export default function Home() {
   const { t, lang } = useLang()
+  const [mode, setMode] = useState<'video' | 'message'>(() => (window.location.hash.includes('message') ? 'message' : 'video'))
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -56,10 +59,22 @@ export default function Home() {
           <br />
           <span className="accent-gradient">{t.heroTitleB}</span>
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-[clamp(1rem,1.6vw,1.15rem)] leading-relaxed text-ink-2">{t.heroSub}</p>
+        <p className="mx-auto mt-6 max-w-2xl text-[clamp(1rem,1.6vw,1.15rem)] leading-relaxed text-ink-2">{mode === 'message' ? t.msgHeroSub : t.heroSub}</p>
 
+        <Segmented
+          className="mx-auto mt-10 w-full max-w-sm"
+          value={mode}
+          onChange={setMode}
+          label="Mode"
+          options={[
+            { value: 'video', label: <><MonitorPlay className="size-4" /> {t.modeVideo}</> },
+            { value: 'message', label: <><MessageSquareWarning className="size-4" /> {t.modeMessage}</> },
+          ]}
+        />
+
+        {mode === 'message' ? <MessageForm busy={busy} run={run} /> : (<>
         {/* Input capsule */}
-        <form onSubmit={submit} className="glass-strong mx-auto mt-10 flex max-w-3xl items-center gap-2 rounded-full! p-2 pl-5">
+        <form onSubmit={submit} className="glass-strong mx-auto mt-6 flex max-w-3xl items-center gap-2 rounded-full! p-2 pl-5">
           <Link2 className="size-5 shrink-0 text-ink-3" />
           <input
             value={url}
@@ -84,13 +99,14 @@ export default function Home() {
           <input ref={fileRef} type="file" accept="audio/*,video/*,.opus,.ogg,.m4a" className="hidden"
             onChange={(e) => e.target.files?.[0] && run(() => startUpload(e.target.files![0]))} />
         </div>
+        </>)}
 
         {err && (
           <Glass tone="red" className="mx-auto mt-6 max-w-xl rounded-2xl! px-5 py-3 text-sm text-ink">{err}</Glass>
         )}
 
         <p className="mt-8 inline-flex items-center gap-2 text-xs text-ink-3">
-          <Lock className="size-3.5" /> {t.privacy}
+          <Lock className="size-3.5" /> {mode === 'message' ? t.msgPrivacy : t.privacy}
         </p>
       </section>
 
@@ -123,7 +139,12 @@ export default function Home() {
             {recent.map((r) => (
               <a key={r.id} href={`#/report/${r.id}`} className="glass glass-hover group block overflow-hidden p-2">
                 <div className="relative aspect-video overflow-hidden rounded-[20px] bg-[var(--glass-inset)]">
-                  {r.video_id ? (
+                  {r.kind === 'message' ? (
+                    <div className="flex size-full flex-col justify-center gap-2 bg-[linear-gradient(160deg,#075e54,#128c7e)] p-5">
+                      <span className="self-start rounded-2xl rounded-tl-sm bg-[#dcf8c6] px-3 py-2 text-left text-[13px] leading-snug text-[#111b21] shadow line-clamp-3">{r.title}</span>
+                      <MessageSquareWarning className="mt-1 size-6 self-end text-white/80" />
+                    </div>
+                  ) : r.video_id ? (
                     <img src={`https://i.ytimg.com/vi/${r.video_id}/mqdefault.jpg`} alt="" loading="lazy"
                       className="size-full object-cover transition-transform duration-700 ease-[var(--ease-out-soft)] group-hover:scale-[1.04]" />
                   ) : (
@@ -135,7 +156,8 @@ export default function Home() {
                 <div className="px-3 pb-3 pt-3.5">
                   <p className="line-clamp-2 font-semibold leading-snug text-ink">{r.title}</p>
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-3">
-                    <AudioLines className="size-3.5" /> <span className="truncate">{r.channel}</span>
+                    {r.kind === 'message' ? <MessageSquareWarning className="size-3.5" /> : <AudioLines className="size-3.5" />}
+                    <span className="truncate">{r.kind === 'message' ? t.msgReceived : r.channel}</span>
                     <span className="ml-auto shrink-0">{fmtDateShort(r.created_at, lang)}</span>
                   </p>
                 </div>

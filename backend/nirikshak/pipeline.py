@@ -11,7 +11,7 @@ from typing import Callable
 from . import analyse, identity, rules, sebi, summary
 from .categories import CATEGORIES
 from .config import HI_MODEL, LLM_MODEL, MAX_DURATION, REPORTS_DIR, WORK_DIR
-from .ingest import IngestError, fetch_youtube, probe_duration, to_wav
+from .ingest import IngestError, fetch_youtube, ocr_image, probe_duration, to_wav
 from .models import Claim, RegistryCheck, Report, Segment, Source
 
 # Progress callback: (stage, fraction 0-1, English message, Hindi message)
@@ -225,3 +225,71 @@ def run_audit(target: str | Path, progress: Progress = _noop, job_id: str | None
         return report
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+MAX_MESSAGE_CHARS = 6000
+
+
+def run_message_audit(text: str | None = None, image: Path | None = None, progress: Progress = _noop,
+                      job_id: str | None = None, private: bool = False) -> Report:
+    """Check a forwarded WhatsApp/Telegram/SMS message (pasted text or a screenshot)."""
+    job_id = job_id or uuid.uuid4().hex[:12]
+    timings: dict[str, float] = {}
+    t0 = time.perf_counter()
+
+    def lap(name: str):
+        nonlocal t0
+        now = time.perf_counter()
+        timings[name] = round(now - t0, 2)
+        t0 = now
+
+    try:
+        progress("fetch", 0, "Reading the message", "मैसेज पढ़ा जा रहा है")
+        if image is not None:
+            progress("fetch", 0.3, "Reading text from the screenshot", "स्क्रीनशॉट से टेक्स्ट पढ़ा जा रहा है")
+            text = ocr_image(image)
+        text = (text or "").strip()[:MAX_MESSAGE_CHARS]
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        if not lines:
+            raise IngestError("No text found in the message." if image is None else "No text could be read from the screenshot.")
+        segments = [Segment(start=float(i), end=float(i + 1), text=l) for i, l in enumerate(lines)]
+        source = Source(kind="message", title=lines[0][:90], description=text,
+                        transcript_source=None, language=None)
+        progress("fetch", 1, f"{len(lines)} lines", f"{len(lines)} लाइनें")
+        lap("fetch")
+        progress("transcribe", 1, "Text ready", "टेक्स्ट तैयार")
+
+        hits = rules.scan_segments(segments, message=True)
+        progress("scan", 1, f"{len(hits)} keyword hints", f"{len(hits)} कीवर्ड संकेत मिले")
+        lap("scan")
+
+        claims = []
+        wins = [list(range(i, min(i + 30, len(segments)))) for i in range(0, len(segments), 30)]
+        for n, idx in enumerate(wins):
+            progress("analyse", n / len(wins), f"Analysing part {n + 1}/{len(wins)}", f"हिस्सा {n + 1}/{len(wins)} जाँचा जा रहा है")
+            claims += analyse.analyse_window(segments, idx, [h for h in hits if h.start in idx], "", message=True)
+        claims = analyse.merge(claims, hits, message=True)
+        claims += identity.impersonation_findings(segments)
+        progress("analyse", 1, f"{len(claims)} findings", f"{len(claims)} नतीजे")
+        lap("analyse")
+
+        progress("registry", 0, "Checking SEBI registry", "SEBI की सूची में जाँच हो रही है")
+        reg = check_registry(source, claims, segments)
+        progress("registry", 1, registry_note(reg, "the sender"), summary.registration_text(reg, "", "hi"))
+        lap("registry")
+
+        progress("summary", 0, "Writing summary", "सारांश लिखा जा रहा है")
+        report = Report(
+            id=job_id, created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            source=source, segments=segments, claims=claims, registry=reg,
+            risk_score=0, risk_level="low", summary_en="", summary_hi="",
+            model=f"{LLM_MODEL} + {HI_MODEL}", timings=timings, private=private,
+        )
+        finalize(report, lambda f, m, h="": progress("summary", f, m, h))
+        progress("summary", 1, "Done", "पूरा हुआ")
+        lap("summary")
+        save(report)
+        return report
+    finally:
+        if image is not None:
+            shutil.rmtree(image.parent, ignore_errors=True)

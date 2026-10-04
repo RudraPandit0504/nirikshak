@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertTriangle, BadgeCheck, CircleAlert, FileText, Loader2, Play, ShieldCheck, Square, Volume2 } from 'lucide-react'
-import { fmtTime } from '../api'
+import { fmtPos } from '../api'
 import { useLang } from '../i18n'
 import type { Category, Report } from '../types'
 import { CAT_COLOR, LEVEL_HEX } from '../ui'
@@ -68,7 +68,9 @@ export function ReportHero({ report, meta, actions }: { report: Report; meta: Re
         <RiskGauge level={report.risk_level} score={report.risk_score} />
         <div className="min-w-0 flex-1">
           <div className="text-[13px] text-ink-3">{meta}</div>
-          <h1 className="display mt-2 text-[clamp(1.5rem,3vw,2.25rem)] leading-tight text-ink">{report.source.title}</h1>
+          <h1 className="display mt-2 text-[clamp(1.5rem,3vw,2.25rem)] leading-tight text-ink">
+            {report.source.kind === 'message' ? t.msgTitle : report.source.title}
+          </h1>
           <p className="mt-4 text-lg font-semibold leading-snug" lang={lang} style={{ color: `color-mix(in oklab, ${color} 70%, var(--ink))` }}>
             {s?.headline ?? fallback}
           </p>
@@ -112,7 +114,7 @@ export function ReportBrief({ report, catLabel, onSeek }: {
                     disabled={!onSeek}
                     className="no-print inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-[var(--ink)] px-2.5 font-mono text-xs font-medium text-[var(--bg)] transition active:scale-95"
                   >
-                    {onSeek && <Play className="size-3" fill="currentColor" />}{fmtTime(c.start)}
+                    {onSeek && <Play className="size-3" fill="currentColor" />}{fmtPos(c.start, report.source.kind === 'message', t.askLine)}
                   </button>
                 ) : (
                   <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-[var(--glass-inset)] px-2.5 text-xs text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">

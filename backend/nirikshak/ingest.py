@@ -164,3 +164,31 @@ def probe_duration(path: Path) -> float:
         return float(r.stdout.strip())
     except ValueError:
         return 0.0
+
+
+def ocr_image(path: Path) -> str:
+    """Read the text in a screenshot with the local vision model (gemma3, via Ollama)."""
+    import base64
+
+    from .config import HI_MODEL, OLLAMA_URL
+
+    img = base64.b64encode(path.read_bytes()).decode()
+    try:
+        r = httpx.post(f"{OLLAMA_URL}/api/chat", json={
+            "model": HI_MODEL,
+            "stream": False,
+            "options": {"temperature": 0, "num_ctx": 8192, "num_predict": 1500},
+            "messages": [{
+                "role": "user",
+                "content": ("You are an OCR engine. Copy ALL the text in this screenshot of a chat or message, "
+                            "line by line, exactly as written. Hindi in Devanagari script must stay in Devanagari "
+                            "(for example पक्का मुनाफा, never 'pakka munafa'); English or Hinglish in Latin letters "
+                            "stays in Latin letters. Never transliterate or translate. Keep links, numbers, UPI IDs "
+                            "and names exactly. Output only the text, nothing else."),
+                "images": [img],
+            }],
+        }, timeout=300)
+        r.raise_for_status()
+    except httpx.HTTPError as e:
+        raise IngestError(f"Could not read the screenshot: {e}") from e
+    return r.json().get("message", {}).get("content", "").strip()

@@ -108,14 +108,17 @@ def _when(t: float, lang: str) -> str:
     return f"At {m} minute{'s' if m != 1 else ''} {s} seconds" if m else f"At {s} seconds"
 
 
-def speech_script(s: Summary, lang: str) -> list[str]:
+def speech_script(s: Summary, lang: str, message: bool = False) -> list[str]:
     """What gets read aloud: the full brief, as sentences."""
     intro = {"en": ("Main concerns.", "In the description"), "hi": ("मुख्य चिंताएँ।", "डिस्क्रिप्शन में")}[lang]
     parts = [s.headline, s.overview]
     if s.concerns:
         parts.append(intro[0])
         for c in s.concerns:
-            where = _when(c.start, lang) if c.where == "transcript" else intro[1]
+            if message:
+                where = f"लाइन {int(c.start) + 1} में" if lang == "hi" else f"In line {int(c.start) + 1}"
+            else:
+                where = _when(c.start, lang) if c.where == "transcript" else intro[1]
             parts.append(f"{where}, {CATEGORIES[c.category][lang]}. {c.why}")
     parts.append(s.registration)
     parts.extend(s.advice)
@@ -148,7 +151,7 @@ def speech_path(report: Report, lang: str) -> Path:
 
     with _lock:  # one synthesis at a time; also guards lazy model loading
         if not out.exists():
-            audio, sr = _synth(speech_script(report.summary[lang], lang), lang)
+            audio, sr = _synth(speech_script(report.summary[lang], lang, report.source.kind == "message"), lang)
             wav = out.with_suffix(".wav")
             sf.write(wav, audio, sr, subtype="PCM_16")
             # AAC is ~10x smaller than WAV and plays in every browser.

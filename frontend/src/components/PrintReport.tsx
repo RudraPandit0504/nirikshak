@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fmtTime } from '../api'
+import { fmtPos, fmtTime } from '../api'
 import { useLang } from '../i18n'
 import type { Category, Claim, Lang, Report } from '../types'
 
@@ -35,6 +35,13 @@ const L = {
       'Registration numbers and the channel name are checked against a copy of SEBI\'s public registry of Research Analysts and Investment Advisers.',
       'The risk score (0-100) adds up the strongest findings of each kind, so several different red flags count more than one repeated phrase.',
     ],
+    methodItemsMsg: [
+      'The message text was pasted, or read from a screenshot by a vision model running on this computer.',
+      'A keyword scanner (English, Hinglish, Hindi) and a local AI model (Qwen 2.5 7B) look for 12 kinds of warning sign, including OTP/PIN requests, payment demands, suspicious links and impersonation. Every finding must quote the message word-for-word, otherwise it is discarded.',
+      'Links are compared with the official websites of well-known brokers and regulators named in the message; names and registration numbers are checked against SEBI\'s public registers.',
+      'The risk score (0-100) adds up the strongest findings of each kind.',
+    ],
+    line: 'Line',
     limits: 'Limitations: Nirikshak audits what is said. It does not judge whether any stock or product is good, and it is not investment advice. AI can make mistakes, so check each quoted moment yourself.',
     appendix: 'Appendix: full transcript', flaggedNote: 'Lines marked ⚑ contain a finding.',
     page: 'Nirikshak · निरीक्षक · local-first audit of finance-influencer videos',
@@ -67,6 +74,13 @@ const L = {
       'रजिस्ट्रेशन नंबर और चैनल का नाम SEBI की रिसर्च एनालिस्ट और इन्वेस्टमेंट एडवाइज़र की सार्वजनिक सूची से मिलाए जाते हैं।',
       'जोखिम स्कोर (0-100) हर तरह के सबसे मज़बूत संकेतों को जोड़कर बनता है। इसलिए कई अलग-अलग खतरे, एक ही बात बार-बार कहने से ज़्यादा गिने जाते हैं।',
     ],
+    methodItemsMsg: [
+      'मैसेज का टेक्स्ट पेस्ट किया गया, या स्क्रीनशॉट से इसी कंप्यूटर पर चलने वाले मॉडल ने पढ़ा।',
+      'एक कीवर्ड जाँच (अंग्रेज़ी, हिंग्लिश, हिंदी) और इसी कंप्यूटर पर चलने वाला AI मॉडल (Qwen 2.5 7B) 12 तरह के खतरे के संकेत ढूँढते हैं, जैसे OTP/PIN माँगना, पैसे की माँग, संदिग्ध लिंक और नकली पहचान। हर संकेत के साथ मैसेज की हूबहू लाइन देनी होती है, वरना उसे हटा दिया जाता है।',
+      'लिंक को मैसेज में बताए गए ब्रोकर या रेगुलेटर की आधिकारिक वेबसाइट से मिलाया जाता है; नाम और रजिस्ट्रेशन नंबर SEBI की सार्वजनिक सूचियों से जाँचे जाते हैं।',
+      'जोखिम स्कोर (0-100) हर तरह के सबसे मज़बूत संकेतों को जोड़कर बनता है।',
+    ],
+    line: 'लाइन',
     limits: 'ध्यान दें: निरीक्षक सिर्फ़ यह जाँचता है कि वीडियो में क्या कहा गया। यह किसी शेयर या प्रोडक्ट को अच्छा या बुरा नहीं बताता, और यह निवेश की सलाह नहीं है। AI से गलती हो सकती है, इसलिए बताया गया हिस्सा खुद भी देखें।',
     appendix: 'पूरी ट्रांसक्रिप्ट', flaggedNote: '⚑ वाली लाइनों में खतरे का संकेत मिला है।',
     page: 'Nirikshak · निरीक्षक · फाइनेंस वीडियो की जाँच, आपके अपने कंप्यूटर पर',
@@ -92,6 +106,8 @@ export default function PrintReport({ report, catLabel }: { report: Report; catL
   const p = L[lang]
   const { source, registry: reg } = report
   const s = report.summary?.[lang]
+  const isMessage = source.kind === 'message'
+  const pos = (x: number) => fmtPos(x, isMessage, t.askLine)
   const strong = report.claims.filter((c) => c.confidence >= 0.5)
   const weak = report.claims.filter((c) => c.confidence < 0.5)
   const why = (c: Claim) => (lang === 'hi' && c.why_hi ? c.why_hi : c.why_en)
@@ -121,12 +137,12 @@ export default function PrintReport({ report, catLabel }: { report: Report; catL
       <section className="pr-avoid">
         <table className="pr-kv">
           <tbody>
-            <tr><th>{p.video}</th><td><strong>{source.title}</strong></td></tr>
+            <tr><th>{isMessage ? t.msgTitle : p.video}</th><td><strong>{source.title}</strong></td></tr>
             {source.channel && <tr><th>{p.channel}</th><td>{source.channel}</td></tr>}
             {source.url && <tr><th>{p.link}</th><td><a href={source.url}>{source.url}</a></td></tr>}
             {source.duration > 0 && <tr><th>{p.duration}</th><td>{fmtTime(source.duration)}</td></tr>}
             {source.language && <tr><th>{p.language}</th><td>{t.langNames[source.language] ?? source.language}</td></tr>}
-            <tr><th>{p.transcript}</th><td>{source.kind === 'upload' ? `${p.upload} · ` : ''}{source.transcript_source === 'whisper' ? p.whisper : p.captions}</td></tr>
+            {!isMessage && <tr><th>{p.transcript}</th><td>{source.kind === 'upload' ? `${p.upload} · ` : ''}{source.transcript_source === 'whisper' ? p.whisper : p.captions}</td></tr>}
             <tr><th>{p.audited}</th><td>{fmtDate(report.created_at, lang)}</td></tr>
             <tr><th>{p.models}</th><td>{report.model} · Whisper large-v3-turbo</td></tr>
             <tr><th>{p.reportId}</th><td className="pr-mono">{report.id}</td></tr>
@@ -145,7 +161,7 @@ export default function PrintReport({ report, catLabel }: { report: Report; catL
             <ol className="pr-list">
               {s.concerns.map((c, i) => (
                 <li key={i}>
-                  <strong>{c.where === 'transcript' ? fmtTime(c.start) : p.desc} · {catLabel(c.category)}:</strong> {c.why}
+                  <strong>{c.where === 'transcript' ? pos(c.start) : p.desc} · {catLabel(c.category)}:</strong> {c.why}
                 </li>
               ))}
             </ol>
@@ -239,11 +255,11 @@ export default function PrintReport({ report, catLabel }: { report: Report; catL
       {/* All findings */}
       <section>
         <h2>{p.findings} ({strong.length})</h2>
-        {strong.length === 0 ? <p>{p.none}</p> : <FindingsTable claims={strong} p={p} why={why} catLabel={catLabel} videoId={source.video_id} />}
+        {strong.length === 0 ? <p>{p.none}</p> : <FindingsTable claims={strong} p={p} why={why} catLabel={catLabel} videoId={source.video_id} message={isMessage} />}
         {weak.length > 0 && (
           <>
             <h3>{p.weak}</h3>
-            <FindingsTable claims={weak} p={p} why={why} catLabel={catLabel} videoId={source.video_id} compact />
+            <FindingsTable claims={weak} p={p} why={why} catLabel={catLabel} videoId={source.video_id} compact message={isMessage} />
           </>
         )}
       </section>
@@ -255,7 +271,7 @@ export default function PrintReport({ report, catLabel }: { report: Report; catL
       </section>
       <section className="pr-avoid">
         <h2>{p.method}</h2>
-        <ul className="pr-list">{p.methodItems.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        <ul className="pr-list">{(isMessage ? p.methodItemsMsg : p.methodItems).map((x, i) => <li key={i}>{x}</li>)}</ul>
         <p className="pr-note">{p.limits}</p>
       </section>
 
@@ -269,7 +285,7 @@ export default function PrintReport({ report, catLabel }: { report: Report; catL
               const hits = flaggedAt.get(seg.start)
               return (
                 <tr key={i} className={hits ? 'pr-flag' : ''}>
-                  <td className="pr-mono">{fmtTime(seg.start)}</td>
+                  <td className="pr-mono">{pos(seg.start)}</td>
                   <td>{hits && <strong>⚑ {[...new Set(hits.map((h) => catLabel(h.category)))].join(', ')}: </strong>}{seg.text}</td>
                 </tr>
               )
@@ -283,19 +299,20 @@ export default function PrintReport({ report, catLabel }: { report: Report; catL
   )
 }
 
-function FindingsTable({ claims, p, why, catLabel, videoId, compact = false }: {
+function FindingsTable({ claims, p, why, catLabel, videoId, compact = false, message = false }: {
   claims: Claim[]
   p: (typeof L)[Lang]
   why: (c: Claim) => string
   catLabel: (c: Category) => string
   videoId: string | null
   compact?: boolean
+  message?: boolean
 }) {
   return (
     <table className={`pr-table pr-findings ${compact ? 'pr-compact' : ''}`}>
       <thead>
         <tr>
-          <th>#</th><th>{p.time}</th><th>{p.category}</th><th>{p.sev}</th><th>{p.conf}</th><th>{p.source}</th>
+          <th>#</th><th>{message ? p.line : p.time}</th><th>{p.category}</th><th>{p.sev}</th><th>{p.conf}</th><th>{p.source}</th>
         </tr>
       </thead>
       {claims.map((c, i) => {
@@ -304,7 +321,7 @@ function FindingsTable({ claims, p, why, catLabel, videoId, compact = false }: {
           <tbody key={i} className="pr-avoid">
             <tr className="pr-row-head">
               <td>{i + 1}</td>
-              <td className="pr-mono">{c.where === 'transcript' ? (link ? <a href={link}>{fmtTime(c.start)}</a> : fmtTime(c.start)) : p.desc}</td>
+              <td className="pr-mono">{c.where === 'transcript' ? (link ? <a href={link}>{fmtTime(c.start)}</a> : message ? `L ${Math.floor(c.start) + 1}` : fmtTime(c.start)) : p.desc}</td>
               <td>{catLabel(c.category)}</td>
               <td>{p.severity[c.severity]}</td>
               <td>{Math.round(c.confidence * 100)}%</td>

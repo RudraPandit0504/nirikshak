@@ -19,10 +19,10 @@ from fastapi.staticfiles import StaticFiles
 from . import qa, sebi, tts
 from .analyse import LLMError
 from .categories import CATEGORIES
-from .config import LLM_MODEL, REPORTS_DIR, WORK_DIR
+from .config import DATA_DIR, LLM_MODEL, REPORTS_DIR, WORK_DIR
 from .ingest import IngestError
 from .models import Report
-from .pipeline import STAGES, run_audit
+from .pipeline import STAGES, run_audit, run_message_audit
 
 app = FastAPI(title="Nirikshak", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
@@ -39,12 +39,12 @@ def _emit(job: str, event: dict) -> None:
         JOBS[job].append(event)
 
 
-def _run(job: str, target) -> None:
+def _run(job: str, target, runner=None) -> None:
     def progress(stage, frac, msg, msg_hi=""):
         _emit(job, {"type": "progress", "stage": stage, "frac": round(frac, 3), "msg": msg, "msg_hi": msg_hi or msg})
 
     try:
-        report = run_audit(target, progress, job_id=job)
+        report = runner(progress, job) if runner else run_audit(target, progress, job_id=job)
         _emit(job, {"type": "done", "id": report.id})
         tts.prewarm(report)
     except (IngestError, LLMError) as e:
@@ -52,15 +52,15 @@ def _run(job: str, target) -> None:
     except Exception as e:  # noqa: BLE001 - surface anything to the UI
         _emit(job, {"type": "error", "msg": f"Unexpected error: {e}"})
     finally:
-        if isinstance(target, Path):
+        if isinstance(target, Path) and target.exists():
             shutil.rmtree(target.parent, ignore_errors=True)
 
 
-def _start(target) -> dict:
+def _start(target, runner=None) -> dict:
     job = uuid.uuid4().hex[:12]
     with LOCK:
         JOBS[job] = [{"type": "queued", "position": executor._work_queue.qsize()}]
-    executor.submit(_run, job, target)
+    executor.submit(_run, job, target, runner)
     return {"job": job}
 
 
@@ -90,6 +90,34 @@ async def audit_upload(file: UploadFile = File(...)):
                 raise HTTPException(413, "File too large (max 200 MB).")
             f.write(chunk)
     return _start(dest)
+
+
+@app.post("/api/check-message")
+async def check_message(text: str = Form(""), save: bool = Form(True), image: UploadFile | None = File(None)):
+    """Check a forwarded WhatsApp/Telegram/SMS tip: pasted text, or a screenshot read by the local vision model."""
+    path = None
+    if image is not None and image.filename:
+        up = WORK_DIR / f"msg-{uuid.uuid4().hex[:8]}"
+        up.mkdir(parents=True)
+        path = up / Path(image.filename).name
+        data = await image.read()
+        if len(data) > 15 * 1024 * 1024:
+            shutil.rmtree(up, ignore_errors=True)
+            raise HTTPException(413, "Image too large (max 15 MB).")
+        path.write_bytes(data)
+    elif not text.strip():
+        raise HTTPException(400, "Paste a message or attach a screenshot.")
+    return _start(None, lambda progress, job: run_message_audit(
+        text=text if path is None else None, image=path, progress=progress, job_id=job, private=not save))
+
+
+@app.delete("/api/reports/{rid}")
+def delete_report(rid: str):
+    p = _report_path(rid)
+    p.unlink()
+    for f in (DATA_DIR / "speech").glob(f"{rid}-*"):
+        f.unlink(missing_ok=True)
+    return {"deleted": rid}
 
 
 @app.get("/api/audit/{job}/events")
@@ -193,8 +221,10 @@ def list_reports(limit: int = 20):
             r = json.loads(p.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             continue
+        if r.get("private"):
+            continue
         out.append({
-            "id": r["id"], "title": r["source"]["title"], "channel": r["source"]["channel"],
+            "id": r["id"], "kind": r["source"]["kind"], "title": r["source"]["title"], "channel": r["source"]["channel"],
             "video_id": r["source"].get("video_id"), "risk_score": r["risk_score"],
             "risk_level": r["risk_level"], "created_at": r["created_at"],
         })

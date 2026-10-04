@@ -63,8 +63,8 @@ REGISTRATION = {
         "typo": " (the number written in the video has a small typo)",
         "disc_yes": " A risk disclaimer is present.",
         "disc_no": " No risk disclaimer was found in the video or its description.",
-        "no_advice": " Registration only matters for creators who give buy/sell calls or promise returns, and this video does not.",
-        "no_advice_other": " This video gives no buy/sell tips or return promises, so that is not a concern here.",
+        "no_advice": " Registration only matters for creators who give buy/sell calls or promise returns, and this {thing} does not.",
+        "no_advice_other": " This {thing} gives no buy/sell tips or return promises, so that is not a concern here.",
         "checked": " We checked {n} names, websites and numbers linked to this video.",
         "checked_one": " We checked the one name linked to this video.",
     },
@@ -81,8 +81,8 @@ REGISTRATION = {
         "typo": " – वीडियो में नंबर थोड़ा गलत लिखा है",
         "disc_yes": " वीडियो में जोखिम की चेतावनी (डिस्क्लेमर) दी गई है।",
         "disc_no": " वीडियो या उसके डिस्क्रिप्शन में जोखिम की कोई चेतावनी (डिस्क्लेमर) नहीं है।",
-        "no_advice": " रजिस्ट्रेशन तभी ज़रूरी है जब कोई खरीदने-बेचने की टिप दे या रिटर्न का वादा करे, और यह वीडियो ऐसा नहीं करता।",
-        "no_advice_other": " यह वीडियो खरीदने-बेचने की टिप या रिटर्न का वादा नहीं करता, इसलिए यहाँ यह चिंता की बात नहीं है।",
+        "no_advice": " रजिस्ट्रेशन तभी ज़रूरी है जब कोई खरीदने-बेचने की टिप दे या रिटर्न का वादा करे, और यह {thing} ऐसा नहीं करता।",
+        "no_advice_other": " यह {thing} खरीदने-बेचने की टिप या रिटर्न का वादा नहीं करता, इसलिए यहाँ यह चिंता की बात नहीं है।",
         "checked": " हमने इस वीडियो से जुड़े {n} नाम, वेबसाइट और नंबर जाँचे।",
         "checked_one": " हमने इस वीडियो से जुड़ा एक नाम जाँचा।",
     },
@@ -109,7 +109,10 @@ CATEGORY_NAMES = {
 }
 
 
-def registration_text(reg: RegistryCheck, channel: str, lang: str, advises: bool = True) -> str:
+THING = {"en": {"video": "video", "message": "message"}, "hi": {"video": "वीडियो", "message": "मैसेज"}}
+
+
+def registration_text(reg: RegistryCheck, channel: str, lang: str, advises: bool = True, kind: str = "video") -> str:
     t = REGISTRATION[lang]
     hit = reg.entity or next((h for h in reg.number_results.values() if h), None) or \
         (reg.name_matches[0] if reg.name_matches else None)
@@ -123,9 +126,9 @@ def registration_text(reg: RegistryCheck, channel: str, lang: str, advises: bool
         if reg.checks:
             text += t["checked_one"] if len(reg.checks) == 1 and "checked_one" in t else t["checked"].format(n=len(reg.checks))
         if not advises:
-            return text + t["no_advice"]
+            return text + t["no_advice"].format(thing=THING[lang]["message" if kind == "message" else "video"])
     if reg.verdict == "registered_other" and not advises:
-        return text + t["no_advice_other"]
+        return text + t["no_advice_other"].format(thing=THING[lang]["message" if kind == "message" else "video"])
     return text + (t["disc_yes"] if reg.disclaimer_found else t["disc_no"])
 
 
@@ -162,6 +165,22 @@ ADVICE = {
         "en": "A registration number that does not exist is a serious warning sign. Consider reporting the channel at cybercrime.gov.in or by calling 1930.",
         "hi": "जो रजिस्ट्रेशन नंबर है ही नहीं, वह गंभीर खतरे का संकेत है। चाहें तो cybercrime.gov.in पर या 1930 पर कॉल करके शिकायत करें।",
     },
+    "credential_request": {
+        "en": "Never share an OTP, PIN or password, and never install AnyDesk or similar apps for anyone. No bank, broker or SEBI official will ever ask for them.",
+        "hi": "OTP, PIN या पासवर्ड कभी किसी को न बताएँ, और किसी के कहने पर AnyDesk जैसा ऐप न डालें। कोई भी बैंक, ब्रोकर या SEBI अधिकारी ये कभी नहीं माँगता।",
+    },
+    "suspicious_link": {
+        "en": "Don't open the link or install the app. Use only your broker's official app from the Play Store / App Store.",
+        "hi": "लिंक न खोलें और ऐप इंस्टॉल न करें। सिर्फ़ अपने ब्रोकर का आधिकारिक ऐप Play Store / App Store से ही इस्तेमाल करें।",
+    },
+    "upfront_payment": {
+        "en": "Don't send any money, fee or 'tax' to a UPI ID, QR code or personal account mentioned in the message.",
+        "hi": "मैसेज में दिए किसी UPI ID, QR कोड या निजी खाते पर कोई पैसा, फ़ीस या 'टैक्स' न भेजें।",
+    },
+    "impersonation": {
+        "en": "Contact the company yourself through its official website or app, not through numbers or links in this message. If you shared details or money, call 1930 or report at cybercrime.gov.in immediately.",
+        "hi": "कंपनी से खुद उसकी आधिकारिक वेबसाइट या ऐप के ज़रिए संपर्क करें, इस मैसेज के नंबर या लिंक से नहीं। अगर आपने जानकारी या पैसे दे दिए हैं, तो तुरंत 1930 पर कॉल करें या cybercrime.gov.in पर शिकायत करें।",
+    },
     "clean": {
         "en": "No major warning signs were found. Still, verify anyone who gives investment advice on SEBI's website before acting on it.",
         "hi": "कोई बड़ा खतरे का संकेत नहीं मिला। फिर भी, किसी की निवेश सलाह मानने से पहले SEBI की वेबसाइट पर उसका रजिस्ट्रेशन जाँच लें।",
@@ -176,7 +195,8 @@ def advice(claims: list[Claim], reg: RegistryCheck, lang: str) -> list[str]:
         keys.append("fake_number")
     if "stock_tip" in cats:
         keys.append("registered_tips" if reg.verdict in ("verified", "matched", "guests_registered") else "unregistered_tips")
-    for k in ("guaranteed_returns", "price_prediction", "paid_group", "paid_promotion", "urgency_fomo"):
+    for k in ("credential_request", "upfront_payment", "impersonation", "suspicious_link",
+              "guaranteed_returns", "price_prediction", "paid_group", "paid_promotion", "urgency_fomo"):
         if k in cats:
             keys.append(k)
     return [ADVICE[k][lang] for k in (keys or ["clean"])][:4]
@@ -196,13 +216,13 @@ def _write_overview(source: Source, segments: list[Segment], claims: list[Claim]
         or "- none"
     data = _chat([
         {"role": "system", "content": (
-            "You write the top of an audit report about a finance video, for a first-time Indian investor.\n"
+            f"You write the top of an audit report about {'a forwarded WhatsApp/Telegram/SMS message' if source.kind == 'message' else 'a finance video'}, for a first-time Indian investor.\n"
             "Return JSON with:\n"
             "- headline: ONE sentence (max 25 words) stating the risk level and the main reason, e.g. "
             "'High risk: promises guaranteed 100x crypto returns and pushes a paid Telegram group.' "
             "For low risk, say what the video is and that no major red flags were found.\n"
-            "- overview: 3-4 plain sentences describing what the video is about, what the creator is "
-            "pitching or teaching, and how (tone, tactics). Base it on the transcript excerpt. "
+            "- overview: 3-4 plain sentences describing what the video or message is about, what is being "
+            "pitched, taught or asked of the reader, and how (tone, tactics). Base it on the text excerpt. "
             "Be specific (topics, products, claims) and neutral.\n"
             "Rules: do not give investment advice; do not judge whether any stock or coin is good; do not "
             "invent claims that are not in the transcript or findings; no severity numbers or category codes."
@@ -217,10 +237,14 @@ def _write_overview(source: Source, segments: list[Segment], claims: list[Claim]
     return data.get("headline", "").strip(), data.get("overview", "").strip()
 
 
+SENDER = {"en": "the sender", "hi": "भेजने वाले"}
+
+
 def build(source: Source, segments: list[Segment], claims: list[Claim], reg: RegistryCheck,
           score: int, level: str) -> dict[str, Summary]:
     advises = gives_advice(claims)
-    reg_en = registration_text(reg, source.channel, "en", advises)
+    who = {lang: source.channel or (SENDER[lang] if source.kind == "message" else "") for lang in ("en", "hi")}
+    reg_en = registration_text(reg, who["en"], "en", advises, source.kind)
     headline, overview = _write_overview(source, segments, claims, level, score, reg_en)
     hi = translate_hi([headline, overview])
     concerns = top_concerns(claims)
@@ -232,7 +256,7 @@ def build(source: Source, segments: list[Segment], claims: list[Claim], reg: Reg
             concerns=[Concern(start=c.start, where=c.where, category=c.category, severity=c.severity,
                               quote=c.quote, why=(c.why_hi or c.why_en) if lang == "hi" else c.why_en)
                       for c in concerns],
-            registration=registration_text(reg, source.channel, lang, advises),
+            registration=registration_text(reg, who[lang], lang, advises, source.kind),
             advice=advice(claims, reg, lang),
         )
     return out

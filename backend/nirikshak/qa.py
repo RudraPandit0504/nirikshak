@@ -96,11 +96,13 @@ def retrieve(report: Report, query: list[str], k: int = TOP_K) -> list[int]:
 # classification over-refused factual questions ("which stock does he recommend?"), so the
 # refusal decision is made by these patterns, not by the model.
 ADVICE_RE = re.compile(
-    r"\b(should|shall|must)\s+(i|we)\b|\b(can|could|would)\s+(i|we)\s+(buy|sell|invest|earn|make money|double)\b|\bis it (good|safe|wise|right|worth)\b|\bworth (buying|investing)\b|"
+    r"\b(should|shall|must)\s+(i|we)\s+(\w+\s+){0,2}(buy|sell|invest|hold|trade|exit|book|put|keep|add|accumulate|enter)\b|\b(can|could|would)\s+(i|we)\s+(buy|sell|invest|earn|make money|double)\b|\bis it (good|safe|wise|right|worth)\b|\bworth (buying|investing)\b|"
     r"\b(will|would|is going to|gonna)\b.{0,40}\b(double|triple|rise|go up|fall|crash|reach|hit|give returns?|multibagger)\b|"
     r"\b(good|best|right) (stock|coin|share|time) to (buy|sell|invest)\b|\bshould (one|people|investors) (buy|sell|invest)\b|"
-    r"\b(kya|kyaa)\s+(mujhe|main|hum|hame|hamein)\b|\b(khareed|kharid|bech)(na|u|e|en)?\s+(chahiye|lu|loon|du|doon)\b|"
-    r"क्या\s+(मुझे|मैं|हम|हमें)|(खरीद|बेच|निवेश कर)(ना|ूँ|ूं|ें)?\s+(चाहिए|लूँ|लूं|दूँ|दूं)|"
+    r"\b(kya|kyaa)\s+(mujhe|main|hum|hame|hamein)\b.{0,40}\b(khareed|kharid|bech|invest|paisa\s*laga)|"
+    r"\b(khareed|kharid|bech)(na|u|e|en)?\s+(chahiye|lu|loon|du|doon)\b|"
+    r"क्या\s+(मुझे|मैं|हम|हमें).{0,40}(खरीद|बेच|निवेश|इन्वेस्ट|पैसा\s*लगा|पैसे\s*लगा)|"
+    r"(खरीद|बेच|निवेश कर)(ना|ूँ|ूं|ें)?\s+(चाहिए|लूँ|लूं|दूँ|दूं)|"
     r"(डबल|ऊपर|बढ़|गिर)\S*\s+(होगा|होगी|जाएगा|जाएगी)",
     re.I,
 )
@@ -170,13 +172,15 @@ def _context(report: Report, lines: list[int]) -> str:
         for c in report.claims if c.confidence >= 0.5
     )[:2500] or "- none"
     transcript = "\n".join(f"[L{i}] ({_fmt(report.segments[i].start, msg)}) {report.segments[i].text}" for i in lines)
+    head = (f"Forwarded message (WhatsApp/Telegram/SMS), {len(report.segments)} lines\n" if msg else
+            f"Video: \"{report.source.title}\" by {report.source.channel or 'unknown'}\n")
     return (
-        f"Video: \"{report.source.title}\" by {report.source.channel or 'unknown'}\n"
+        head +
         f"Audit: risk {report.risk_score}/100 ({report.risk_level}).\n"
         f"Summary: {(s.headline + ' ' + s.overview) if s else report.summary_en}\n"
         f"SEBI registration check: {s.registration if s else report.registry.verdict}\n"
         f"Audit findings:\n{findings}\n\n"
-        f"Relevant transcript lines:\n{transcript}"
+        f"Relevant {'message' if msg else 'transcript'} lines:\n{transcript}"
     )
 
 
@@ -214,8 +218,13 @@ def ask(report: Report, question: str, lang: str = "en", history: list[dict] | N
                    | set(evidence_lines(report)))
 
     messages = [{"role": "system", "content": (
-        "You are Nirikshak's assistant. You help first-time Indian investors understand a finance video that has "
-        "been audited for investor-protection risks. Be factual, calm and simple. " + ANSWER_RULES[kind] +
+        ("You are Nirikshak's assistant. You help someone understand a WhatsApp/Telegram/SMS message they received, "
+         "which has been checked for fraud. The transcript lines are the message's lines. Safety advice is welcome: "
+         "e.g. never share OTP/PIN, don't click unknown links or install apps, don't pay fees to UPI IDs, verify via "
+         "official websites, call 1930 if money was lost. Be factual, calm and simple. "
+         if report.source.kind == "message" else
+         "You are Nirikshak's assistant. You help first-time Indian investors understand a finance video that has "
+         "been audited for investor-protection risks. Be factual, calm and simple. ") + ANSWER_RULES[kind] +
         " Never mention line numbers like [L5] in the answer text; put them only in cited_lines. You may mention "
         "timestamps like 3:54. Always write the answer in English, even if the question or transcript is in Hindi "
         "(it is translated afterwards)."

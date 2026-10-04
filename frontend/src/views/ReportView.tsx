@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AlertTriangle, ArrowLeft, BadgeCheck, BadgeX, Braces, ExternalLink, FileText, Loader2, Play, Plus, Printer,
+  AlertTriangle, ArrowLeft, BadgeCheck, BadgeX, Braces, ExternalLink, FileText, Loader2, Play, Plus, Printer, Trash2,
   ShieldQuestion,
 } from 'lucide-react'
-import { fmtTime, getReport } from '../api'
+import { deleteReport, fmtPos, fmtTime, getReport } from '../api'
 import { useLang } from '../i18n'
 import type { Category, Claim, Meta, Report } from '../types'
 import AskPanel from '../components/AskPanel'
@@ -48,6 +48,12 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
   if (!report) return <Loader2 className="mx-auto mt-24 size-8 animate-spin text-ink-3" />
 
   const { source } = report
+  const isMessage = source.kind === 'message'
+  const pos = (t0: number) => fmtPos(t0, isMessage, t.askLine)
+  const remove = async () => {
+    await deleteReport(report.id)
+    window.location.hash = '/'
+  }
   const cat = (c: Category) => meta?.categories[c]?.[lang] ?? c
   const seek = (s: number) => {
     if (playFrom === null) {
@@ -76,7 +82,12 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
 
   const flagged = new Set(report.claims.filter((c) => c.where === 'transcript' && (showWeak || c.confidence >= 0.5)).map((c) => c.start))
   const totalTime = Object.values(report.timings).reduce((a, b) => a + b, 0)
-  const metaLine = (
+  const metaLine = isMessage ? (
+    <>
+      <span className="font-semibold text-ink-2">{t.msgReceived}</span> · {report.segments.length} {t.lines}
+      {' · '}<span className="font-mono">{new Date(report.created_at).toLocaleString(lang === 'hi' ? 'hi-IN' : 'en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+    </>
+  ) : (
     <>
       {source.channel && <span className="font-semibold text-ink-2">{source.channel}</span>}
       {source.duration > 0 && <> · <span className="font-mono">{fmtTime(source.duration)}</span></>}
@@ -101,6 +112,7 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
               <Button onClick={printReport}><Printer className="size-4" /> {t.downloadPdf}</Button>
               <Button onClick={exportJson} variant="ghost"><Braces className="size-4" /> JSON</Button>
               <LinkButton href="#/" variant="ghost"><Plus className="size-4" /> {t.newAudit}</LinkButton>
+              {isMessage && <Button variant="ghost" onClick={remove}><Trash2 className="size-4" /> {t.msgDelete}</Button>}
             </>
           }
         />
@@ -110,7 +122,7 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
         </div>
 
         <div className="mt-5">
-          <AskPanel reportId={report.id} onSeek={source.video_id ? seek : undefined} />
+          <AskPanel reportId={report.id} isMessage={isMessage} onSeek={source.video_id ? seek : undefined} />
         </div>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -172,7 +184,7 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
                   onChange={setTab}
                   options={[
                     { value: 'findings', label: <>{t.findings} <span className="font-mono text-ink-3">{visible.length}</span></> },
-                    { value: 'transcript', label: t.transcript },
+                    { value: 'transcript', label: isMessage ? t.msgTitle : t.transcript },
                   ]}
                   className="min-w-[260px]"
                 />
@@ -196,12 +208,24 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
                       {visible.map((c) => {
                         const idx = report.claims.indexOf(c)
                         return (
-                          <ClaimRow key={idx} c={c} label={cat(c.category)} active={active === idx}
+                          <ClaimRow key={idx} c={c} label={cat(c.category)} active={active === idx} posLabel={pos(c.start)}
                             onSeek={source.video_id && c.where === 'transcript' ? () => { seek(c.start); setActive(idx) } : undefined} />
                         )
                       })}
                     </ul>
                   )}
+                </div>
+              ) : isMessage ? (
+                <div className="mt-5 rounded-[24px] bg-[linear-gradient(160deg,#0b141a,#111b21)] p-4 sm:p-6">
+                  <div className="max-w-xl rounded-[18px] rounded-tl-md bg-[#005c4b] px-4 py-3 shadow-lg">
+                    {report.segments.map((s, i) => (
+                      <p key={i} className={`flex gap-3 rounded-lg px-1.5 py-1 text-[15px] leading-relaxed text-[#e9edef] ${
+                        flagged.has(s.start) ? 'bg-[rgba(255,59,48,.28)] shadow-[inset_0_0_0_1px_rgba(255,120,110,.6)]' : ''}`}>
+                        <span className="w-6 shrink-0 pt-0.5 text-right font-mono text-[11px] text-[#8fd3c4]">{i + 1}</span>
+                        <span className="min-w-0 break-words">{s.text}</span>
+                      </p>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="mt-5 max-h-[600px] space-y-0.5 overflow-y-auto pr-1 text-[15px] leading-relaxed">
@@ -224,7 +248,7 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
 
           {/* Side column */}
           <aside className="space-y-5 order-first lg:order-none">
-            <RegistryCard report={report} />
+            {(!isMessage || (report.registry.checks ?? []).length > 0) && <RegistryCard report={report} />}
             <Glass className="p-6">
               <p className="eyebrow">{t.verifyReport}</p>
               <ul className="mt-3 space-y-2.5 text-sm leading-relaxed text-ink-2">
@@ -269,7 +293,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   )
 }
 
-function ClaimRow({ c, label, active, onSeek }: { c: Claim; label: string; active: boolean; onSeek?: () => void }) {
+function ClaimRow({ c, label, active, onSeek, posLabel }: { c: Claim; label: string; active: boolean; onSeek?: () => void; posLabel: string }) {
   const { t, lang } = useLang()
   const why = lang === 'hi' && c.why_hi ? c.why_hi : c.why_en
   const sev = c.severity === 3 ? '#ff3b30' : c.severity === 2 ? '#ff9f0a' : '#8e8e93'
@@ -282,7 +306,7 @@ function ClaimRow({ c, label, active, onSeek }: { c: Claim; label: string; activ
             disabled={!onSeek}
             className="inline-flex h-7 items-center gap-1 rounded-full bg-[var(--ink)] px-2.5 font-mono font-medium text-[var(--bg)] transition active:scale-95 disabled:opacity-70"
           >
-            {onSeek && <Play className="size-3" fill="currentColor" />} {fmtTime(c.start)}
+            {onSeek && <Play className="size-3" fill="currentColor" />} {posLabel}
           </button>
         ) : (
           <span className="inline-flex h-7 items-center gap-1 rounded-full bg-[var(--glass-inset)] px-2.5 font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--hairline)]">
