@@ -33,6 +33,9 @@ with tempfile.TemporaryDirectory() as tmp:
     # Tracked source files only (git archive), then the demo data.
     subprocess.run(f"git -C {ROOT} archive HEAD | tar -x -C {tmp}", shell=True, check=True)
     shutil.copy(ROOT / "deploy/Dockerfile.space", tmp / "Dockerfile")
+    # The repo's .dockerignore keeps local reports out of dev builds; the demo image needs them.
+    (tmp / ".dockerignore").write_text("\n".join(l for l in (ROOT / ".dockerignore").read_text().splitlines()
+                                                if l not in ("backend/data/reports", "backend/data/speech")) + "\n")
     shutil.copy(ROOT / "deploy/space_README.md", tmp / "README.md")
     data = ROOT / "backend/data"
     (tmp / "backend/data/reports").mkdir(parents=True, exist_ok=True)

@@ -41,6 +41,8 @@ exit            # log out and ssh in again so the docker group applies
 ```bash
 chmod 600 ~/app.env
 tar -xzf nirikshak-deploy.tar.gz && cd nirikshak
+# include the demo reports and voice files in the image (the repo's .dockerignore excludes them)
+sed -i '/^backend\/data\/reports$/d; /^backend\/data\/speech$/d' .dockerignore
 docker build -t nirikshak .                 # 5-10 minutes
 
 docker network create web
