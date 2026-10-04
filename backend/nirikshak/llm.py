@@ -4,7 +4,7 @@ Every model call in the app goes through `chat_json` (structured JSON output) or
 `vision_text` (read text from an image), so switching provider is one setting:
 
     NIRIKSHAK_PROVIDER=ollama   # default: qwen2.5:7b + gemma3:4b on the local GPU
-    NIRIKSHAK_PROVIDER=cloud    # GROQ_API_KEY and/or GEMINI_API_KEY; keys stay on the server
+    NIRIKSHAK_PROVIDER=cloud    # AWS_BEARER_TOKEN_BEDROCK, GROQ_API_KEY and/or GEMINI_API_KEY; keys stay on the server
 
 In cloud mode every model of every configured provider is tried in order, so a rate limit or an
 outage on one (each has its own free quota) falls through to the next.
@@ -34,7 +34,11 @@ def _models(var: str, default: str) -> list[str]:
 
 
 # (name, endpoint, key env var, text models, vision models). All are OpenAI-compatible.
+_REGION = os.environ.get("AWS_REGION", "us-east-1")
 CLOUD = [
+    ("bedrock", f"https://bedrock-runtime.{_REGION}.amazonaws.com/openai/v1/chat/completions", "AWS_BEARER_TOKEN_BEDROCK",
+     _models("NIRIKSHAK_BEDROCK_MODELS", "openai.gpt-oss-120b-1:0"),
+     _models("NIRIKSHAK_BEDROCK_VISION", "")),
     ("groq", "https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY",
      _models("NIRIKSHAK_GROQ_MODELS", "openai/gpt-oss-120b"),
      _models("NIRIKSHAK_GROQ_VISION", "")),  # Groq has no vision model now; Gemini reads screenshots
@@ -44,9 +48,10 @@ CLOUD = [
 ]
 
 
-# Groq first (fast, ~1000 requests/day per model); when it asks us to wait (8k tokens/min free limit),
+# Bedrock first when configured (paid from AWS credits, no tight free limits), then Groq (fast,
+# ~1000 requests/day per model); when Groq asks us to wait (8k tokens/min free limit),
 # move straight on to Gemini, whose free models have small daily quotas but each its own.
-ORDER = _models("NIRIKSHAK_CLOUD_ORDER", "groq,gemini")
+ORDER = _models("NIRIKSHAK_CLOUD_ORDER", "bedrock,groq,gemini")
 
 
 def _available() -> list[tuple]:
@@ -92,7 +97,7 @@ def _body(provider: str, model: str, base: dict, schema: dict | None) -> dict:
     msgs = list(base["messages"])
     if provider == "gemini":
         body["reasoning_effort"] = "none"
-    elif "gpt-oss" in model:
+    elif "gpt-oss" in model:  # Groq and Bedrock
         body["reasoning_effort"] = "low"
     elif "qwen3" in model:
         body["reasoning_effort"] = "none"
@@ -112,7 +117,7 @@ def _cloud_post(base: dict, schema: dict | None = None, vision: bool = False) ->
     """Try every configured provider/model in order; back off on rate limits and overloads."""
     chain = [(name, url, key, m) for name, url, key, text, vis in _available() for m in (vis if vision else text)]
     if not chain:
-        raise LLMError("No cloud API key is set on the server (GROQ_API_KEY or GEMINI_API_KEY).")
+        raise LLMError("No cloud API key is set on the server (AWS_BEARER_TOKEN_BEDROCK, GROQ_API_KEY or GEMINI_API_KEY).")
     last = ""
     for name, url, key, model in chain:
         for attempt in range(2):
