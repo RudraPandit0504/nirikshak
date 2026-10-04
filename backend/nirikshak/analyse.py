@@ -35,12 +35,6 @@ CLAIM_SCHEMA = {
     "required": ["claims"],
 }
 
-SUMMARY_SCHEMA = {
-    "type": "object",
-    "properties": {"summary": {"type": "string"}},
-    "required": ["summary"],
-}
-
 TRANSLATE_SCHEMA = {
     "type": "object",
     "properties": {"hindi": {"type": "array", "items": {"type": "string"}}},
@@ -129,10 +123,17 @@ def _ground(quote: str, text: str) -> float:
 REG_WORDS = re.compile(r"sebi|regist|सेबी|रजिस्ट|\bIN[AH]\s*-?\d", re.I)
 
 
+# The model sometimes flags a speaker who is *warning* viewers, and says so in its own
+# explanation ("the speaker warns against schemes promising high returns").
+SELF_CONTRADICTION = re.compile(r"\b(warns?|warning|cautions?|cautioning|advises? against)\b.{0,40}\b(against|about|viewers|investors|not to)\b", re.I)
+
+
 def _plausible(c: dict) -> bool:
     """Category-specific sanity checks on LLM output."""
     if c.get("category") == "registration_claim":
         return bool(REG_WORDS.search(c.get("quote", "")))
+    if SELF_CONTRADICTION.search(c.get("why_en", "")):
+        return False
     return True
 
 
@@ -229,23 +230,6 @@ def merge(claims: list[Claim], hits: list[RuleHit]) -> list[Claim]:
     return sorted(merged, key=lambda c: (c.where != "transcript", c.start))
 
 
-def summarise(title: str, claims: list[Claim], registry_note: str) -> str:
-    strong = [c for c in claims if c.confidence >= 0.5]
-    if not strong:
-        bullet = "No significant warning signs were found."
-    else:
-        bullet = "\n".join(f"- {c.category} (sev {c.severity}): \"{c.quote}\"" for c in strong[:20])
-    data = _chat([
-        {"role": "system", "content": "You write short, calm, factual audit summaries for first-time Indian investors. "
-                                      "Never give investment advice or judge any stock. 2-3 sentences, simple English. "
-                                      "Only describe the findings listed; do not invent new ones. If the registration check "
-                                      "is 'not relevant', do not mention registration at all. Do not imply wrongdoing "
-                                      "beyond the findings. Do not mention severity numbers or internal category names."},
-        {"role": "user", "content": f"Video: {title}\nRegistration check: {registry_note}\nFindings:\n{bullet}"},
-    ], SUMMARY_SCHEMA, num_predict=400)
-    return data.get("summary", "").strip()
-
-
 def translate_hi(texts: list[str], batch: int = 6) -> list[str]:
     """Translate English sentences to simple Hindi with the Hindi model.
 
@@ -266,7 +250,7 @@ def _translate(texts: list[str]) -> list[str]:
     data = _chat([
         {"role": "system", "content": "Translate each numbered English sentence into simple, natural Hindi (Devanagari) "
                                       "for a first-time investor. Keep terms like SEBI, stock, demat, Telegram, IPO in "
-                                      "English letters. Return a JSON array 'hindi' with exactly one translation per "
+                                      "English letters. Translate 'creator' as 'क्रिएटर' (never 'निर्माता'). Return a JSON array 'hindi' with exactly one translation per "
                                       "input, same order, no numbering, no transliteration."},
         {"role": "user", "content": numbered},
     ], TRANSLATE_SCHEMA, num_predict=200 + 150 * len(texts), model=HI_MODEL)

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle, BadgeCheck, BadgeX, Download, ExternalLink, FileText, Loader2, Play, Plus, Printer,
-  ShieldQuestion, Square, Volume2,
+  ShieldQuestion,
 } from 'lucide-react'
 import { fmtTime, getReport } from '../api'
 import { useLang } from '../i18n'
 import type { Category, Claim, Meta, Report } from '../types'
-import { RiskGauge } from '../components/Risk'
+import PrintReport from '../components/PrintReport'
+import SummaryCard from '../components/SummaryCard'
 import { CAT_COLOR } from '../ui'
 
 const SEBI_RA = 'https://www.sebi.gov.in/sebiweb/other/OtherAction.do?doRecognisedFpi=yes&intmId=14'
@@ -19,7 +20,6 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
   const [filter, setFilter] = useState<Category | 'all'>('all')
   const [tab, setTab] = useState<'findings' | 'transcript'>('findings')
   const [active, setActive] = useState<number | null>(null)
-  const [speaking, setSpeaking] = useState(false)
   // Lite embed: show the thumbnail until the user plays or seeks, then load the real player.
   const [playFrom, setPlayFrom] = useState<number | null>(null)
   const iframe = useRef<HTMLIFrameElement>(null)
@@ -27,7 +27,6 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
 
   useEffect(() => {
     getReport(id).then(setReport).catch((e) => setErr(e.message))
-    return () => window.speechSynthesis?.cancel()
   }, [id])
 
   const visible = useMemo(
@@ -54,23 +53,12 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
     }
     playerBox.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
-  const summary = lang === 'hi' && report.summary_hi ? report.summary_hi : report.summary_en
-
-  const speak = () => {
-    const synth = window.speechSynthesis
-    if (!synth) return
-    if (speaking) {
-      synth.cancel()
-      setSpeaking(false)
-      return
-    }
-    const u = new SpeechSynthesisUtterance(summary)
-    u.lang = lang === 'hi' ? 'hi-IN' : 'en-IN'
-    const v = synth.getVoices().find((v) => v.lang === u.lang)
-    if (v) u.voice = v
-    u.onend = () => setSpeaking(false)
-    synth.speak(u)
-    setSpeaking(true)
+  const printReport = () => {
+    // The browser uses the page title as the default PDF file name.
+    const prev = document.title
+    document.title = `Nirikshak audit - ${source.title}`.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 120)
+    window.addEventListener('afterprint', () => (document.title = prev), { once: true })
+    window.print()
   }
 
   const exportJson = () => {
@@ -86,7 +74,9 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
   const totalTime = Object.values(report.timings).reduce((a, b) => a + b, 0)
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
+    <>
+    <PrintReport report={report} catLabel={cat} />
+    <div className="mx-auto max-w-7xl px-4 py-6 print:hidden">
       {/* Title row */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -102,8 +92,12 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
         <div className="no-print flex gap-2">
           <a href="#/" className="btn" title={t.newAudit}><Plus className="size-4" /> <span className="hidden sm:inline">{t.newAudit}</span></a>
           <button onClick={exportJson} className="btn" title={t.exportJson}><Download className="size-4" /> <span className="hidden sm:inline">{t.exportJson}</span></button>
-          <button onClick={() => window.print()} className="btn" title={t.print}><Printer className="size-4" /> <span className="hidden sm:inline">{t.print}</span></button>
+          <button onClick={printReport} className="btn" title={t.downloadPdf}><Printer className="size-4" /> <span className="hidden sm:inline">{t.downloadPdf}</span></button>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <SummaryCard report={report} catLabel={cat} onSeek={source.video_id ? seek : undefined} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -225,33 +219,11 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
 
         {/* Right column */}
         <aside className="space-y-6 order-first lg:order-none">
-          <div className="card">
-            <div className="flex items-center gap-4">
-              <RiskGauge level={report.risk_level} score={report.risk_score} />
-              <div className="min-w-0">
-                <p className="label">{t.riskScore}</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  {report.claims.filter((c) => c.confidence >= 0.5).length} {t.findings.toLowerCase()}
-                </p>
-              </div>
-            </div>
-            <div className="mt-5">
-              <div className="flex items-center justify-between">
-                <p className="label">{t.summary}</p>
-                <button onClick={speak} className="no-print inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                  {speaking ? <Square className="size-3.5" /> : <Volume2 className="size-3.5" />} {speaking ? t.stop : t.listen}
-                </button>
-              </div>
-              <p className="mt-2 leading-relaxed" lang={lang}>{summary}</p>
-            </div>
-          </div>
-
           <RegistryCard report={report} />
 
           <div className="card">
-            <p className="label">{t.whatToDo}</p>
+            <p className="label">{t.verifyReport}</p>
             <ul className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300 list-disc pl-4">
-              <li>{t.todo1}</li>
               <li>{t.todo2}</li>
               <li>{t.todo3}</li>
             </ul>
@@ -268,6 +240,7 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
         </aside>
       </div>
     </div>
+    </>
   )
 }
 

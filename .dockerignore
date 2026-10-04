@@ -5,5 +5,7 @@ frontend/dist
 backend/data/work
 backend/data/reports
 backend/data/hf
+backend/data/models
+backend/data/speech
 backend/data/*.sqlite
 .git

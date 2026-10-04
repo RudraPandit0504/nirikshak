@@ -65,6 +65,25 @@ class RegistryCheck(BaseModel):
     verdict: Literal["verified", "number_not_found", "claimed_unverified", "possible_match", "not_registered", "unknown"]
 
 
+class Concern(BaseModel):
+    start: float
+    where: Literal["transcript", "description"]
+    category: Category
+    severity: int
+    quote: str
+    why: str
+
+
+class Summary(BaseModel):
+    """Structured audit brief in one language. Only `headline` and `overview` are
+    LLM-written; the rest is built from verified findings and the registry check."""
+    headline: str
+    overview: str
+    concerns: list[Concern]
+    registration: str
+    advice: list[str]
+
+
 class Report(BaseModel):
     id: str
     created_at: str
@@ -76,5 +95,6 @@ class Report(BaseModel):
     risk_level: Literal["low", "medium", "high"]
     summary_en: str
     summary_hi: str
+    summary: dict[str, Summary] | None = None  # {"en": …, "hi": …}
     model: str
     timings: dict[str, float]

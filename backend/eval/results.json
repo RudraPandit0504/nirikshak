@@ -20,26 +20,6 @@
     "sec_per_case": 0.0
   },
   {
-    "system": "qwen2.5:7b + rules",
-    "set": "cases",
-    "cases": 18,
-    "precision": 0.9,
-    "recall": 0.9,
-    "f1": 0.9,
-    "false_alarm_clean": "1/6",
-    "sec_per_case": 5.8
-  },
-  {
-    "system": "qwen2.5:7b + rules",
-    "set": "heldout",
-    "cases": 12,
-    "precision": 0.923,
-    "recall": 0.923,
-    "f1": 0.923,
-    "false_alarm_clean": "0/4",
-    "sec_per_case": 4.5
-  },
-  {
     "system": "gemma3:4b + rules",
     "set": "cases",
     "cases": 18,
@@ -78,5 +58,25 @@
     "f1": 0.786,
     "false_alarm_clean": "0/4",
     "sec_per_case": 12.4
+  },
+  {
+    "system": "qwen2.5:7b + rules",
+    "set": "cases",
+    "cases": 18,
+    "precision": 0.9,
+    "recall": 0.9,
+    "f1": 0.9,
+    "false_alarm_clean": "1/6",
+    "sec_per_case": 9.6
+  },
+  {
+    "system": "qwen2.5:7b + rules",
+    "set": "heldout",
+    "cases": 12,
+    "precision": 0.923,
+    "recall": 0.923,
+    "f1": 0.923,
+    "false_alarm_clean": "0/4",
+    "sec_per_case": 7.0
   }
 ]

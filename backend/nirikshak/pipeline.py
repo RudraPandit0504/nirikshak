@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from . import analyse, rules, sebi
+from . import analyse, rules, sebi, summary
 from .config import HI_MODEL, LLM_MODEL, MAX_DURATION, REPORTS_DIR, WORK_DIR
 from .ingest import IngestError, fetch_youtube, probe_duration, to_wav
 from .models import Claim, RegistryCheck, Report, Source
@@ -118,6 +118,30 @@ def registry_note(reg: RegistryCheck, channel: str) -> str:
     }[reg.verdict]
 
 
+def finalize(report: Report, progress: Callable[[float, str], None] = lambda f, m: None) -> Report:
+    """Score the report, fill in Hindi explanations and write the structured summary.
+    Used at the end of an audit, and by `nirikshak resummarize` to upgrade saved reports."""
+    reg = report.registry
+    # Re-apply current sanity checks (matters when upgrading reports made by older versions).
+    report.claims = [c for c in report.claims if c.origin == "rules" or analyse._plausible(c.model_dump())]
+    _explain_registration_claims(report.claims, reg)
+    report.risk_score, report.risk_level = score(report.claims, reg)
+    progress(0.2, "Translating findings to Hindi")
+    need = [c for c in report.claims if not c.why_hi]
+    for c, h in zip(need, analyse.translate_hi([c.why_en for c in need])):
+        c.why_hi = h
+    progress(0.6, "Writing summary")
+    report.summary = summary.build(report.source, report.segments, report.claims, reg,
+                                   report.risk_score, report.risk_level)
+    report.summary_en = summary.flat(report.summary["en"])
+    report.summary_hi = summary.flat(report.summary["hi"])
+    return report
+
+
+def save(report: Report) -> None:
+    (REPORTS_DIR / f"{report.id}.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+
 def run_audit(target: str | Path, progress: Progress = _noop, job_id: str | None = None,
               force_whisper: bool = False) -> Report:
     job_id = job_id or uuid.uuid4().hex[:12]
@@ -179,34 +203,22 @@ def run_audit(target: str | Path, progress: Progress = _noop, job_id: str | None
         progress("registry", 0, "Checking SEBI registry")
         transcript = " ".join(s.text for s in segments)
         reg = check_registry(source, claims, transcript)
-        _explain_registration_claims(claims, reg)
         progress("registry", 1, registry_note(reg, source.channel))
         lap("registry")
 
         # 6. Score + summary
-        risk, level = score(claims, reg)
         progress("summary", 0, "Writing summary")
-        gives_advice = any(c.category in ("stock_tip", "guaranteed_returns", "registration_claim")
-                           and c.confidence >= 0.5 for c in claims)
-        # Registration status only matters to the summary when the video advises or claims to be registered.
-        note = registry_note(reg, source.channel) if gives_advice or reg.verdict != "not_registered" else "not relevant"
-        s_en = analyse.summarise(source.title, claims, note)
-        progress("summary", 0.5, "Translating to Hindi")
-        need = [c for c in claims if not c.why_hi]
-        hindi = analyse.translate_hi([s_en] + [c.why_en for c in need])
-        s_hi = hindi[0] if hindi else ""
-        for c, h in zip(need, hindi[1:]):
-            c.why_hi = h
-        progress("summary", 1, "Done")
-        lap("summary")
-
         report = Report(
             id=job_id, created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             source=source, segments=segments, claims=claims, registry=reg,
-            risk_score=risk, risk_level=level, summary_en=s_en, summary_hi=s_hi,
+            risk_score=0, risk_level="low", summary_en="", summary_hi="",
             model=f"{LLM_MODEL} + {HI_MODEL}", timings=timings,
         )
-        (REPORTS_DIR / f"{job_id}.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
+        finalize(report, lambda f, m: progress("summary", f, m))
+        progress("summary", 1, "Done")
+        lap("summary")
+
+        save(report)
         return report
     finally:
         shutil.rmtree(work, ignore_errors=True)

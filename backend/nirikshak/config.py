@@ -5,6 +5,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("NIRIKSHAK_DATA", ROOT / "data"))
 WORK_DIR = DATA_DIR / "work"
 REPORTS_DIR = DATA_DIR / "reports"
+MODELS_DIR = DATA_DIR / "models"
+SPEECH_DIR = DATA_DIR / "speech"
 SEBI_DB = DATA_DIR / "sebi_registry.sqlite"
 SEBI_CSV = DATA_DIR / "sebi_registry.csv"
 
@@ -20,5 +22,9 @@ WINDOW_SECONDS = int(os.environ.get("NIRIKSHAK_WINDOW", "90"))
 # Longest video we agree to process, in seconds.
 MAX_DURATION = int(os.environ.get("NIRIKSHAK_MAX_DURATION", str(45 * 60)))
 
-for d in (DATA_DIR, WORK_DIR, REPORTS_DIR):
+# Read-aloud voices (Kokoro-82M). Chosen by a Whisper-CER + UTMOS benchmark, see README.
+TTS_VOICE_EN = os.environ.get("NIRIKSHAK_TTS_EN", "af_heart")
+TTS_VOICE_HI = os.environ.get("NIRIKSHAK_TTS_HI", "hf_alpha")
+
+for d in (DATA_DIR, WORK_DIR, REPORTS_DIR, MODELS_DIR, SPEECH_DIR):
     d.mkdir(parents=True, exist_ok=True)

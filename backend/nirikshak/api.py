@@ -15,11 +15,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import sebi
+from . import sebi, tts
 from .analyse import LLMError
 from .categories import CATEGORIES
 from .config import LLM_MODEL, REPORTS_DIR, WORK_DIR
 from .ingest import IngestError
+from .models import Report
 from .pipeline import STAGES, run_audit
 
 app = FastAPI(title="Nirikshak", version="0.1.0")
@@ -44,6 +45,7 @@ def _run(job: str, target) -> None:
     try:
         report = run_audit(target, progress, job_id=job)
         _emit(job, {"type": "done", "id": report.id})
+        tts.prewarm(report)
     except (IngestError, LLMError) as e:
         _emit(job, {"type": "error", "msg": str(e)})
     except Exception as e:  # noqa: BLE001 - surface anything to the UI
@@ -121,6 +123,18 @@ def _report_path(rid: str) -> Path:
 @app.get("/api/reports/{rid}")
 def get_report(rid: str):
     return FileResponse(_report_path(rid), media_type="application/json")
+
+
+@app.get("/api/reports/{rid}/speech")
+def speech(rid: str, lang: str = "en"):
+    """The summary read aloud (WAV), generated with Kokoro on first request and cached."""
+    report = Report.model_validate_json(_report_path(rid).read_text(encoding="utf-8"))
+    try:
+        path = tts.speech_path(report, lang)
+    except tts.TTSError as e:
+        raise HTTPException(503, str(e)) from e
+    media = "audio/mp4" if path.suffix == ".m4a" else "audio/wav"
+    return FileResponse(path, media_type=media, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api/reports")

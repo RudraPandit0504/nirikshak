@@ -123,3 +123,31 @@ def test_channel_name_matches_registered_entity_with_suffix():
 def test_registration_claim_needs_registration_words():
     assert not analyse._plausible({"category": "registration_claim", "quote": "the most trusted place in stock market"})
     assert analyse._plausible({"category": "registration_claim", "quote": "We are SEBI Registered"})
+
+
+def test_claim_whose_explanation_is_a_warning_is_dropped():
+    assert not analyse._plausible({"category": "misleading_claim", "quote": "x",
+                                   "why_en": "The speaker warns against fraudulent schemes that promise high returns."})
+    assert analyse._plausible({"category": "guaranteed_returns", "quote": "x",
+                               "why_en": "Promising fixed returns is a red flag."})
+
+
+def test_summary_parts_built_from_findings_not_llm():
+    from nirikshak import summary
+    claims = [_claim("guaranteed_returns", start=30), _claim("paid_group", 2, start=90), _claim("urgency_fomo", 2, 0.3)]
+    top = summary.top_concerns(claims)
+    assert [c.category for c in top] == ["guaranteed_returns", "paid_group"]  # weak signal excluded
+    adv = summary.advice(claims, _reg(), "en")
+    assert any("guarantee" in a for a in adv) and len(adv) <= 4
+    clean = summary.registration_text(_reg(), "Edu Channel", "en", advises=False)
+    assert "does not" in clean
+
+
+def test_speech_text_normalisation():
+    from nirikshak import tts
+    en = tts.normalise("Buy/sell call: 100X returns, join https://t.me/x (INH000011431)", "en")
+    assert "or" in en and "100 times" in en and "http" not in en and "INH" not in en
+    hi = tts.normalise("SEBI और Telegram पर खरीद/बिक्री, 100x", "hi")
+    # Latin words make the Hindi phonemizer switch language mid-sentence, so they are converted.
+    assert "सेबी" in hi and "टेलीग्राम" in hi and "या" in hi and "गुना" in hi
+    assert not any("a" <= ch.lower() <= "z" for ch in hi)

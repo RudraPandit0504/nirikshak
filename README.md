@@ -37,7 +37,10 @@ Built for **SANGYAN 2026** (SNTC IIT (BHU) × SEBI × NSDL), Track E: *Misinform
 | 🏷️ **8 harm categories** | Guaranteed returns · specific buy/sell calls · price predictions · urgency/FOMO · paid promotion/affiliate · paid Telegram/VIP groups · SEBI-registration claims · misleading/cherry-picked claims |
 | 🏛️ **Real SEBI registry check** | Mirrors SEBI's public RA + IA lists (3,300+ entities). Validates any `INH…`/`INA…` number quoted in the video or description, and fuzzy-matches the channel name. |
 | 🧾 **Disclaimer check** | Detects whether a risk disclaimer exists ("not SEBI registered", "for educational purposes", "subject to market risks", including Hindi variants). |
-| 🇮🇳 **Bharat-first** | Handles Hindi, English and Hinglish audio and captions. The UI, explanations and summaries are bilingual, and there's read-aloud for low-literacy users. |
+| 🇮🇳 **Bharat-first** | Handles Hindi, English and Hinglish audio and captions. The UI, explanations and summaries are bilingual. |
+| 🔊 **Natural read-aloud** | The summary is spoken by a local neural voice (Kokoro-82M) in English or Hindi, for users who find reading hard. |
+| 📝 **Structured brief** | A verdict, an overview of what the video pitches, the top concerns with timestamps, SEBI status and concrete next steps. |
+| 🖨️ **PDF report** | A complete A4 report: video details, summary, registry check, every finding with timestamp links, methodology, and the full transcript as an appendix. |
 | 🎙️ **Voice notes too** | Upload a forwarded WhatsApp voice note or video. Whisper transcribes it on your GPU. |
 | 📊 **Risk score** | A 0–100 score, built so that one repeated phrase can't dominate but several different kinds of red flag add up. |
 | 🔒 **Private by design** | Everything runs locally. Only YouTube and SEBI's public website are contacted. |
@@ -91,6 +94,22 @@ The design choices that matter:
   auto-captions garbled a *"मैं personal guarantee देता हूं"* ("I personally guarantee") claim that Whisper
   transcribed cleanly, so it was flagged. On the RTX 4050, Whisper transcribes 5 minutes of audio in about 25 s.
   The CUDA libraries come from pip wheels, so no system CUDA install is needed.
+- **A summary that can't overstate the findings.** The LLM writes only the headline and the overview of what the
+  video is about. The concerns, registration status and advice are assembled from verified findings and the
+  registry check ([`summary.py`](backend/nirikshak/summary.py)).
+- **A voice chosen by measurement.** Browsers on Linux fall back to espeak, which is hard to understand. Candidate
+  voices were scored on intelligibility (Whisper character error rate) and predicted naturalness (UTMOS, 1–5):
+
+  | Voice | English CER / UTMOS | Hindi CER / UTMOS |
+  |---|---|---|
+  | espeak-ng (browser fallback) | 0.05 / 1.61 | 0.27 / 1.38 |
+  | Piper (best: amy / priyamvada) | 0.05 / 4.46 | 0.14 / 3.36 |
+  | **Kokoro-82M** (af_heart / hf_alpha) | **0.05 / 4.53** | 0.14 / **4.03** |
+  | **Kokoro + Devanagari normalisation** (shipped) | | **0.04 / 4.13** |
+
+  Converting Latin words such as "SEBI" or "Telegram" to Devanagari before speaking stops the phonemizer from
+  switching language mid-sentence, which cut Hindi errors by more than two thirds. Audio is generated on the CPU,
+  cached as AAC, and pre-generated right after each audit.
 - **Registry matching that resists typos.** Creators often mistype their own registration numbers. A quoted number
   that isn't in the registry is matched to registered numbers within 2 edits, but only accepted if it resolves to
   the channel's own registered name, because one typo can be close to several real registrations.
@@ -114,13 +133,13 @@ Claim detection is measured on hand-labelled transcript snippets in Hindi, Engli
 | Keyword rules only | 1.00 | 0.38 | 0.56 | 0 / 4 | <0.01 |
 | gemma3:4b + rules | 0.69 | 0.69 | 0.69 | 2 / 4 | 2.8 |
 | qwen3:8b + rules | 0.73 | 0.85 | 0.79 | 0 / 4 | 12.4 |
-| **qwen2.5:7b + rules** (shipped) | **0.92** | **0.92** | **0.92** | **0 / 4** | 4.5 |
+| **qwen2.5:7b + rules** (shipped) | **0.92** | **0.92** | **0.92** | **0 / 4** | 7.0† |
 
 Dev set, for reference: rules 0.84 F1 · gemma3:4b 0.78 · qwen3:8b 0.88 · **qwen2.5:7b 0.90**.
 Qwen 2.5 had the fewest false alarms on clean snippets (1/6, against 3/6 and 4/6 for the other models).
 
 \*RTX 4050 Laptop (6 GB). qwen3:8b doesn't fit fully in 6 GB of VRAM and partly runs on the CPU, which explains
-its latency. Raw numbers are in [`backend/eval/results.json`](backend/eval/results.json).
+its latency. †Last re-run happened while read-aloud audio was being generated on the CPU; unloaded it was 4.5 s. Raw numbers are in [`backend/eval/results.json`](backend/eval/results.json).
 
 The rules-only baseline is precise but misses most real claims on unseen phrasing. The LLM layer is what
 generalises. The sets are small and written by the author, so treat the numbers as a sanity check, not a
@@ -156,6 +175,7 @@ CLI:
 uv run nirikshak audit "https://www.youtube.com/watch?v=…"   # prints a report
 uv run nirikshak audit voice_note.opus -o report.json        # local file → Whisper
 uv run nirikshak sebi-sync                                   # refresh SEBI registry (~3 min)
+uv run nirikshak resummarize                                 # rebuild summaries of saved reports
 uv run pytest                                                # unit tests (no GPU/network)
 ```
 
@@ -170,7 +190,8 @@ The image builds, but the full GPU compose stack has not been tested end-to-end 
 For frontend development, run `npm run dev` in `frontend/`; it proxies `/api` to `:8000`.
 
 Configuration is through environment variables: `NIRIKSHAK_LLM`, `NIRIKSHAK_LLM_HI`, `NIRIKSHAK_WHISPER`,
-`OLLAMA_URL`, `NIRIKSHAK_MAX_DURATION`.
+`NIRIKSHAK_TTS_EN`, `NIRIKSHAK_TTS_HI`, `OLLAMA_URL`, `NIRIKSHAK_MAX_DURATION`. The voice model (about 350 MB)
+downloads on first use.
 
 ## Project layout
 
@@ -182,6 +203,8 @@ backend/nirikshak/
   analyse.py      windowing, LLM extraction, grounding, merge, summary, Hindi translation
   sebi.py         SEBI RA/IA registry sync, number lookup, fuzzy name match
   pipeline.py     orchestration, registry verdict, scoring
+  summary.py      structured brief (headline/overview by LLM, the rest from findings)
+  tts.py          Kokoro read-aloud, speech-text normalisation, audio cache
   api.py          FastAPI: jobs, SSE progress, reports, static frontend
 backend/eval/     labelled dev + held-out sets, eval script, results.json
 backend/tests/    unit tests

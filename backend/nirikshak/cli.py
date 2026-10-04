@@ -14,6 +14,9 @@ def main() -> None:
 
     sub.add_parser("sebi-sync", help="download SEBI's RA/IA registry")
 
+    rs = sub.add_parser("resummarize", help="re-score and rewrite the summary of saved reports (no re-analysis)")
+    rs.add_argument("ids", nargs="*", help="report ids (default: all)")
+
     s = sub.add_parser("serve", help="run the web API (and built frontend)")
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8000)
@@ -40,6 +43,19 @@ def main() -> None:
         from .sebi import sync
 
         print(f"Synced {sync()} registered entities.")
+
+    elif args.cmd == "resummarize":
+        from .config import REPORTS_DIR, SPEECH_DIR
+        from .models import Report
+        from .pipeline import finalize, save
+
+        paths = [REPORTS_DIR / f"{i}.json" for i in args.ids] or sorted(REPORTS_DIR.glob("*.json"))
+        for p in paths:
+            r = finalize(Report.model_validate_json(p.read_text(encoding="utf-8")))
+            save(r)
+            for old in SPEECH_DIR.glob(f"{r.id}-*"):
+                old.unlink()  # cached audio of the old summary
+            print(f"{r.id}  {r.risk_score:>3} {r.risk_level:<6} {r.summary['en'].headline}")
 
     elif args.cmd == "serve":
         import socket

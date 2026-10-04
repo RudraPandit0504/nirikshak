@@ -27,12 +27,16 @@ services:
     volumes:
       - data:/app/backend/data/reports
       - hf:/app/backend/data/hf
+      - models:/app/backend/data/models
+      - speech:/app/backend/data/speech
     deploy:
       resources:
         reservations:
           devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
 
 volumes:
+  models:
+  speech:
   ollama:
   data:
   hf:

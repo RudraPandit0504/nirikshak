@@ -69,6 +69,23 @@ export interface RegistryCheck {
   verdict: Verdict
 }
 
+export interface Concern {
+  start: number
+  where: 'transcript' | 'description'
+  category: Category
+  severity: 1 | 2 | 3
+  quote: string
+  why: string
+}
+
+export interface Summary {
+  headline: string
+  overview: string
+  concerns: Concern[]
+  registration: string
+  advice: string[]
+}
+
 export interface Report {
   id: string
   created_at: string
@@ -90,6 +107,7 @@ export interface Report {
   risk_level: 'low' | 'medium' | 'high'
   summary_en: string
   summary_hi: string
+  summary?: Record<Lang, Summary> | null
   model: string
   timings: Record<string, number>
 }
