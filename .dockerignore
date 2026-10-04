@@ -1,0 +1,9 @@
+**/node_modules
+**/.venv
+**/__pycache__
+frontend/dist
+backend/data/work
+backend/data/reports
+backend/data/hf
+backend/data/*.sqlite
+.git

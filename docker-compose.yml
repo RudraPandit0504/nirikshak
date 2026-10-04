@@ -1,0 +1,38 @@
+# GPU setup: requires the NVIDIA Container Toolkit. Remove the `deploy` blocks to run on CPU (slow).
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+  # One-shot: pulls the two models the app uses, then exits.
+  models:
+    image: ollama/ollama:latest
+    depends_on: [ollama]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["sh", "-c", "ollama pull qwen2.5:7b && ollama pull gemma3:4b"]
+
+  app:
+    build: .
+    depends_on:
+      models:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+    volumes:
+      - data:/app/backend/data/reports
+      - hf:/app/backend/data/hf
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+volumes:
+  ollama:
+  data:
+  hf:

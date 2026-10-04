@@ -1,0 +1,290 @@
+"""LLM claim extraction, grounding against the transcript, and merging with rule hits."""
+from __future__ import annotations
+
+import json
+import re
+from typing import Callable
+
+import httpx
+from rapidfuzz import fuzz
+
+from .categories import CATEGORIES
+from .config import HI_MODEL, LLM_MODEL, OLLAMA_URL, WINDOW_SECONDS
+from .models import Claim, Segment
+from .rules import RuleHit
+
+CLAIM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "claims": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "line": {"type": "integer"},
+                    "quote": {"type": "string"},
+                    "category": {"type": "string", "enum": list(CATEGORIES)},
+                    "severity": {"type": "integer", "minimum": 1, "maximum": 3},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                    "why_en": {"type": "string"},
+                },
+                "required": ["line", "quote", "category", "severity", "confidence", "why_en"],
+            },
+        }
+    },
+    "required": ["claims"],
+}
+
+SUMMARY_SCHEMA = {
+    "type": "object",
+    "properties": {"summary": {"type": "string"}},
+    "required": ["summary"],
+}
+
+TRANSLATE_SCHEMA = {
+    "type": "object",
+    "properties": {"hindi": {"type": "array", "items": {"type": "string"}}},
+    "required": ["hindi"],
+}
+
+SYSTEM = f"""You are Nirikshak, a compliance auditor that protects Indian retail investors.
+You read transcripts of finance videos by social-media "finfluencers" (Hindi, English or Hinglish)
+and flag statements that could mislead or harm investors.
+
+Flag ONLY statements that fit one of these categories:
+{chr(10).join(f"- {k}: {v['prompt']}" for k, v in CATEGORIES.items())}
+
+Rules:
+- Neutral education is NOT a claim. Explaining what a stop-loss is, describing risk, history, or how markets work must not be flagged.
+- Warnings ABOUT scams are NOT claims (e.g. "if someone promises guaranteed returns, that is a red flag"). Only flag what the speaker themselves promises, recommends or pushes.
+- One line can contain several claims of different categories (e.g. a paid group AND urgency); list each separately.
+- Do not flag a hypothetical example unless it is presented as an expected outcome for the viewer.
+- "quote" must be copied verbatim from the given line (a short span, max ~25 words). Never invent text.
+- "line" is the number in square brackets of the line containing the quote.
+- severity: 3 = direct harm (guarantees, explicit buy/sell call), 2 = strong pressure or hype, 1 = mild.
+- confidence: how sure you are this really is a problematic claim in context (0-1).
+- why_en: one plain-English sentence explaining to a first-time investor why this is a warning sign.
+- Never judge whether a stock or product is good or bad, and never give investment advice yourself.
+- Captions may be auto-generated and contain recognition errors; interpret charitably.
+- If nothing qualifies, return {{"claims": []}}."""
+
+
+class LLMError(RuntimeError):
+    pass
+
+
+def _chat(messages: list[dict], schema: dict, num_predict: int = 1500, model: str = LLM_MODEL) -> dict:
+    try:
+        r = httpx.post(
+            f"{OLLAMA_URL}/api/chat",
+            json={
+                "model": model,
+                "messages": messages,
+                "format": schema,
+                "stream": False,
+                "keep_alive": "10m",
+                "think": False,
+                "options": {"temperature": 0, "num_ctx": 8192, "num_predict": num_predict},
+            },
+            timeout=300,
+        )
+    except httpx.ConnectError as e:
+        raise LLMError(f"Cannot reach Ollama at {OLLAMA_URL}. Is it running?") from e
+    if r.status_code == 404:
+        raise LLMError(f"Model {model} not found. Run: ollama pull {model}")
+    r.raise_for_status()
+    try:
+        return json.loads(r.json()["message"]["content"])
+    except (KeyError, json.JSONDecodeError):
+        return {}
+
+
+def unload_models() -> None:
+    """Evict our models from VRAM so Whisper has room (Ollama keeps them loaded for a while)."""
+    for m in {LLM_MODEL, HI_MODEL}:
+        try:
+            httpx.post(f"{OLLAMA_URL}/api/generate", json={"model": m, "keep_alive": 0}, timeout=30)
+        except httpx.HTTPError:
+            pass
+
+
+def windows(segments: list[Segment], seconds: int = WINDOW_SECONDS) -> list[list[int]]:
+    """Group segment indices into consecutive windows of about `seconds` length."""
+    out: list[list[int]] = []
+    for i, s in enumerate(segments):
+        if not out or s.start - segments[out[-1][0]].start >= seconds:
+            out.append([])
+        out[-1].append(i)
+    return out
+
+
+def _fmt(t: float) -> str:
+    return f"{int(t // 60):02d}:{int(t % 60):02d}"
+
+
+def _ground(quote: str, text: str) -> float:
+    return fuzz.partial_ratio(quote.lower(), text.lower()) if quote else 0.0
+
+
+REG_WORDS = re.compile(r"sebi|regist|सेबी|रजिस्ट|\bIN[AH]\s*-?\d", re.I)
+
+
+def _plausible(c: dict) -> bool:
+    """Category-specific sanity checks on LLM output."""
+    if c.get("category") == "registration_claim":
+        return bool(REG_WORDS.search(c.get("quote", "")))
+    return True
+
+
+def analyse_window(segments: list[Segment], idx: list[int], hints: list[RuleHit], context: str) -> list[Claim]:
+    lines = "\n".join(f"[{i}] ({_fmt(segments[i].start)}) {segments[i].text}" for i in idx)
+    hint_txt = ""
+    if hints:
+        hint_txt = "\n\nKeyword scanner hints (may be false positives; confirm or ignore):\n" + "\n".join(
+            f"- line near {_fmt(h.start)}: '{h.match}' -> {h.category}" for h in hints
+        )
+    user = f"Video context: {context}\n\nTranscript lines:\n{lines}{hint_txt}"
+    data = _chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}], CLAIM_SCHEMA)
+
+    claims = []
+    for c in data.get("claims", []):
+        line = c.get("line")
+        if line not in idx:
+            # Model gave a bad line number: find the line that best contains the quote.
+            line = max(idx, key=lambda i: _ground(c.get("quote", ""), segments[i].text))
+        seg = segments[line]
+        score = _ground(c.get("quote", ""), seg.text)
+        if score < 70:
+            # Try neighbouring lines; quotes often span a caption boundary.
+            near = [j for j in (line - 1, line + 1) if j in idx]
+            best = max(near, key=lambda j: _ground(c["quote"], segments[j].text), default=None)
+            if best is None or _ground(c["quote"], segments[best].text) < 70:
+                continue  # ungrounded: likely hallucinated
+            seg = segments[best]
+        if not _plausible(c):
+            continue
+        try:
+            claims.append(Claim(
+                start=seg.start, end=seg.end, quote=c["quote"].strip(), category=c["category"],
+                severity=int(c["severity"]), confidence=round(float(c["confidence"]), 2),
+                why_en=c["why_en"].strip(),
+            ))
+        except (KeyError, ValueError):
+            continue
+    return claims
+
+
+def analyse_description(description: str, hints: list[RuleHit], context: str) -> list[Claim]:
+    desc = description.strip()[:3000]
+    if not desc:
+        return []
+    lines = [l for l in desc.splitlines() if l.strip()]
+    numbered = "\n".join(f"[{i}] {l}" for i, l in enumerate(lines))
+    user = (f"Video context: {context}\n\nThis is the VIDEO DESCRIPTION (not speech). "
+            f"Focus on paid_promotion, paid_group, registration_claim and guaranteed_returns.\n\n{numbered}")
+    data = _chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}], CLAIM_SCHEMA)
+    out = []
+    for c in data.get("claims", []):
+        if not any(_ground(c.get("quote", ""), l) >= 75 for l in lines) or not _plausible(c):
+            continue
+        try:
+            out.append(Claim(
+                start=0, end=0, quote=c["quote"].strip(), category=c["category"], severity=int(c["severity"]),
+                confidence=round(float(c["confidence"]), 2), why_en=c["why_en"].strip(),
+                where="description",
+            ))
+        except (KeyError, ValueError):
+            continue
+    return out
+
+
+def merge(claims: list[Claim], hits: list[RuleHit]) -> list[Claim]:
+    """Dedupe LLM claims and fold in rule hits the LLM did not cover."""
+    merged: list[Claim] = []
+    for c in sorted(claims, key=lambda c: (c.where, c.start, -c.severity)):
+        dup = next((m for m in merged if m.category == c.category and m.where == c.where
+                    and abs(m.start - c.start) < 8 and fuzz.partial_ratio(m.quote, c.quote) > 60), None)
+        if dup:
+            if c.confidence > dup.confidence:
+                merged[merged.index(dup)] = c
+            continue
+        merged.append(c)
+
+    for h in hits:
+        same = next((m for m in merged if m.category == h.category and m.where == h.where
+                     and (abs(m.start - h.start) < 15 or h.where == "description")), None)
+        if same:
+            same.origin = "llm+rules"
+            # Agreement only strengthens a claim the LLM already believes; it must not
+            # lift a claim the LLM judged unlikely over the display threshold.
+            if same.confidence >= 0.5:
+                same.confidence = round(min(1.0, same.confidence + 0.1), 2)
+        elif h.severity >= 2 or h.category == "registration_claim":
+            info = CATEGORIES[h.category]
+            merged.append(Claim(
+                start=h.start, end=h.end, quote=h.match if h.where == "transcript" else h.text[:160],
+                category=h.category, severity=h.severity, confidence=0.4,
+                why_en=info["about_en"], why_hi=info["about_hi"], origin="rules", where=h.where,
+            ))
+    return sorted(merged, key=lambda c: (c.where != "transcript", c.start))
+
+
+def summarise(title: str, claims: list[Claim], registry_note: str) -> str:
+    strong = [c for c in claims if c.confidence >= 0.5]
+    if not strong:
+        bullet = "No significant warning signs were found."
+    else:
+        bullet = "\n".join(f"- {c.category} (sev {c.severity}): \"{c.quote}\"" for c in strong[:20])
+    data = _chat([
+        {"role": "system", "content": "You write short, calm, factual audit summaries for first-time Indian investors. "
+                                      "Never give investment advice or judge any stock. 2-3 sentences, simple English. "
+                                      "Only describe the findings listed; do not invent new ones. If the registration check "
+                                      "is 'not relevant', do not mention registration at all. Do not imply wrongdoing "
+                                      "beyond the findings. Do not mention severity numbers or internal category names."},
+        {"role": "user", "content": f"Video: {title}\nRegistration check: {registry_note}\nFindings:\n{bullet}"},
+    ], SUMMARY_SCHEMA, num_predict=400)
+    return data.get("summary", "").strip()
+
+
+def translate_hi(texts: list[str], batch: int = 6) -> list[str]:
+    """Translate English sentences to simple Hindi with the Hindi model.
+
+    Small batches keep the model from merging or dropping items; a batch that comes
+    back with the wrong count is retried one sentence at a time."""
+    out: list[str] = []
+    for i in range(0, len(texts), batch):
+        chunk = texts[i:i + batch]
+        got = _translate(chunk)
+        if len(got) != len(chunk):
+            got = [(_translate([t]) or [""])[0] for t in chunk]
+        out.extend(got)
+    return out
+
+
+def _translate(texts: list[str]) -> list[str]:
+    numbered = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(texts))
+    data = _chat([
+        {"role": "system", "content": "Translate each numbered English sentence into simple, natural Hindi (Devanagari) "
+                                      "for a first-time investor. Keep terms like SEBI, stock, demat, Telegram, IPO in "
+                                      "English letters. Return a JSON array 'hindi' with exactly one translation per "
+                                      "input, same order, no numbering, no transliteration."},
+        {"role": "user", "content": numbered},
+    ], TRANSLATE_SCHEMA, num_predict=200 + 150 * len(texts), model=HI_MODEL)
+    return [t.strip() for t in data.get("hindi", [])]
+
+
+def run(segments: list[Segment], hits: list[RuleHit], description: str, context: str,
+        on_progress: Callable[[int, int], None] | None = None) -> list[Claim]:
+    wins = windows(segments)
+    claims: list[Claim] = []
+    for n, idx in enumerate(wins):
+        lo, hi = segments[idx[0]].start, segments[idx[-1]].end
+        win_hits = [h for h in hits if h.where == "transcript" and lo <= h.start <= hi]
+        claims.extend(analyse_window(segments, idx, win_hits, context))
+        if on_progress:
+            on_progress(n + 1, len(wins) + 1)
+    desc_hits = [h for h in hits if h.where == "description"]
+    claims.extend(analyse_description(description, desc_hits, context))
+    if on_progress:
+        on_progress(len(wins) + 1, len(wins) + 1)
+    return merge(claims, hits)
