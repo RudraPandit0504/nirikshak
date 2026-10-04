@@ -1,4 +1,4 @@
-# Hosted demo on a Hugging Face Space (CPU). AI calls go to Google Gemini via a server-side secret.
+# Hosted demo image (Hugging Face Space or any Docker host, e.g. AWS EC2). AI calls go to Bedrock/Groq/Gemini via server-side keys.
 FROM node:22-slim AS web
 WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./

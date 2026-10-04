@@ -12,7 +12,9 @@ const durs = JSON.parse(readFileSync(`${out}/durations.json`, 'utf8'))
 
 const W = 1280, H = 720, DPR = 1.5
 const port = 9500 + Math.floor(Math.random() * 300)
+// GPU rendering through ANGLE/OpenGL: the software renderer only manages ~5 fps with the glass blur.
 const chrome = spawn('google-chrome', ['--headless=new', `--remote-debugging-port=${port}`, '--hide-scrollbars',
+  '--enable-gpu', '--use-angle=gl', '--ignore-gpu-blocklist',
   `--window-size=${W},${H}`, '--autoplay-policy=no-user-gesture-required', '--force-device-scale-factor=1.5',
   `--user-data-dir=${out}/chrome-profile`, 'about:blank'], { stdio: 'ignore' })
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -122,7 +124,7 @@ await send('Page.addScriptToEvaluateOnNewDocument', { source: HELPERS })
 await send('Page.navigate', { url: `${base}/?lang=en#/` })
 await sleep(3000)
 await ev('__demo.ensure()')
-await send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: W * DPR, maxHeight: H * DPR, everyNthFrame: 1 })
+await send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: W * DPR, maxHeight: H * DPR, everyNthFrame: 2 }) // 30 fps is plenty and halves the frames written
 await sleep(600)
 
 const MSG = 'Dear Customer, your Zerodha DEMAT account will be blocked today due to KYC pending.\nUpdate your KYC immediately: http://zerodha-kyc-update.in/verify\nOur executive will call you, please share the OTP to complete verification.\nNo charges, only ₹99 processing fee to UPI kyc.help@ybl'
