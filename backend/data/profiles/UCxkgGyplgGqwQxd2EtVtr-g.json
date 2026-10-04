@@ -2,25 +2,25 @@
   "id": "UCxkgGyplgGqwQxd2EtVtr-g",
   "channel": "KatochXcrypto",
   "channel_url": "https://www.youtube.com/@KatochXcrypto",
-  "created_at": "2026-10-04T13:27:41+00:00",
+  "created_at": "2026-10-04T13:36:24+00:00",
   "videos": [
     {
-      "report_id": "9ddc092520f7",
+      "report_id": "442eb76d9fbb",
       "video_id": "vXw299U9aIk",
       "title": "How high can UDR crypto rally before the dump?",
       "position": 0,
       "upload_date": "20261003",
-      "risk_score": 17,
-      "risk_level": "low",
+      "risk_score": 57,
+      "risk_level": "high",
       "categories": [
-        "misleading_claim",
-        "paid_group"
+        "paid_group",
+        "price_prediction"
       ],
       "verdict": "not_registered",
       "disclaimer": false
     },
     {
-      "report_id": "a246a4267c3d",
+      "report_id": "2b889172d439",
       "video_id": "6DaY5Vdiz1s",
       "title": "How to buy UDR coin on Solana without getting rugged?",
       "position": 1,
@@ -28,17 +28,15 @@
       "risk_score": 100,
       "risk_level": "high",
       "categories": [
-        "guaranteed_returns",
-        "misleading_claim",
         "paid_group",
-        "stock_tip",
+        "price_prediction",
         "urgency_fomo"
       ],
       "verdict": "not_registered",
       "disclaimer": false
     },
     {
-      "report_id": "c949b4aa4046",
+      "report_id": "ac96b7e4083e",
       "video_id": "0UYEnNdaUHc",
       "title": "Is UDR crypto primed for 10X or an Exit Scam?",
       "position": 2,
@@ -47,25 +45,6 @@
       "risk_level": "high",
       "categories": [
         "guaranteed_returns",
-        "misleading_claim",
-        "paid_group",
-        "price_prediction",
-        "urgency_fomo"
-      ],
-      "verdict": "not_registered",
-      "disclaimer": false
-    },
-    {
-      "report_id": "aa011a38fa37",
-      "video_id": "4oZZt1Y300A",
-      "title": "Is ECTF crypto the next USDF coin to 10X this week?",
-      "position": 3,
-      "upload_date": "20260928",
-      "risk_score": 100,
-      "risk_level": "high",
-      "categories": [
-        "guaranteed_returns",
-        "misleading_claim",
         "paid_group",
         "price_prediction",
         "urgency_fomo"
@@ -74,7 +53,25 @@
       "disclaimer": true
     },
     {
-      "report_id": "ebad9f6eaa68",
+      "report_id": "589fde0b262c",
+      "video_id": "4oZZt1Y300A",
+      "title": "Is ECTF crypto the next USDF coin to 10X this week?",
+      "position": 3,
+      "upload_date": "20260928",
+      "risk_score": 100,
+      "risk_level": "high",
+      "categories": [
+        "misleading_claim",
+        "paid_group",
+        "price_prediction",
+        "stock_tip",
+        "urgency_fomo"
+      ],
+      "verdict": "not_registered",
+      "disclaimer": true
+    },
+    {
+      "report_id": "0d7dc235e5bd",
       "video_id": "UkXgLZyzoCw",
       "title": "How high can USDF crypto pump before the dump?",
       "position": 4,
@@ -83,8 +80,8 @@
       "risk_level": "high",
       "categories": [
         "guaranteed_returns",
-        "misleading_claim",
         "paid_group",
+        "paid_promotion",
         "price_prediction",
         "urgency_fomo"
       ],
@@ -93,18 +90,19 @@
     }
   ],
   "category_videos": {
-    "misleading_claim": 5,
     "paid_group": 5,
-    "guaranteed_returns": 4,
-    "stock_tip": 1,
+    "price_prediction": 5,
     "urgency_fomo": 4,
-    "price_prediction": 3
+    "guaranteed_returns": 2,
+    "misleading_claim": 1,
+    "stock_tip": 1,
+    "paid_promotion": 1
   },
-  "avg_risk": 83.4,
+  "avg_risk": 91.4,
   "median_risk": 100.0,
   "max_risk": 100,
   "level": "high",
-  "disclaimer_rate": 0.2,
+  "disclaimer_rate": 0.4,
   "registry": {
     "claims_registration": false,
     "numbers_found": [],
@@ -140,58 +138,58 @@
   },
   "worst": [
     {
-      "report_id": "aa011a38fa37",
-      "video_title": "Is ECTF crypto the next USDF coin to 10X this week?",
-      "start": 152.406,
-      "category": "guaranteed_returns",
-      "severity": 3,
-      "quote": "তবে এটি পাম্প করলে অবশ্যই আপনি লাভবান হবেন।",
-      "why_en": "Promises guaranteed profits from pumping the price.",
-      "why_hi": "भाव बढ़ाने की गारंटीड प्रॉफिट का वादा किया जा रहा है।"
-    },
-    {
-      "report_id": "a246a4267c3d",
+      "report_id": "2b889172d439",
       "video_title": "How to buy UDR coin on Solana without getting rugged?",
-      "start": 56.663,
-      "category": "guaranteed_returns",
-      "severity": 3,
-      "quote": "أشارككم استراتيجيات استثمارية فعّالة تُمكّنكم من تحقيق عوائد تتراوح بين ضعفين إلى عشرة أضعاف، وإذا حالفكم الحظ، فقد تصل إلى مئة ضعف كما فعل أعضاء مجتمعي.",
-      "why_en": "Promising specific return ranges and even a 'hundred-fold' outcome is misleading and can mislead investors into expecting guaranteed returns.",
-      "why_hi": "किसी खास रिटर्न का वादा करना, जैसे 'सौ गुना' लाभ, गुमराह करने वाला है। इससे निवेशकों को लगता है कि रिटर्न गारंटीड है।"
-    },
-    {
-      "report_id": "a246a4267c3d",
-      "video_title": "How to buy UDR coin on Solana without getting rugged?",
-      "start": 116.52,
-      "category": "stock_tip",
-      "severity": 3,
-      "quote": "أنا أنصح الجميع بشراء العملة من هناك.",
-      "why_en": "The speaker is directly recommending a specific stock without any caution or risk mention.",
-      "why_hi": "क्रिएटर बिना किसी चेतावनी या जोखिम बताए किसी खास स्टॉक की सलाह दे रहा है।"
-    },
-    {
-      "report_id": "aa011a38fa37",
-      "video_title": "Is ECTF crypto the next USDF coin to 10X this week?",
-      "start": 101.664,
-      "category": "urgency_fomo",
+      "start": 55.44,
+      "category": "price_prediction",
       "severity": 2,
-      "quote": "যদি দেরি করতে না চান এবং টাকা আকরতে চান, তবে জেন বাটনে ক্লিক করে এখনই প্ল্যাটিনাম টেলিগ্রাম গ্রুপে যোগ দিন",
-      "why_en": "Encourages immediate action and joining a paid group to make money.",
-      "why_hi": "तत्काल कार्रवाई करने और पैसे कमाने के लिए पेड ग्रुप में शामिल होने को बढ़ावा दिया जा रहा है।"
+      "quote": "I share alphas that can give you 2x to 10x return",
+      "why_en": "Claiming to offer returns of '2x to 10x' is a strong indication of potential fraud or misleading claims.",
+      "why_hi": "'2x से 10x' रिटर्न देने का दावा करना धोखाधड़ी या गुमराह करने वाले दावे का संकेत है।"
     },
     {
-      "report_id": "aa011a38fa37",
-      "video_title": "Is ECTF crypto the next USDF coin to 10X this week?",
-      "start": 164.525,
+      "report_id": "ac96b7e4083e",
+      "video_title": "Is UDR crypto primed for 10X or an Exit Scam?",
+      "start": 0.0,
       "category": "guaranteed_returns",
       "severity": 2,
-      "quote": "এটি আপনাকে ২ গুণ থেকে ৫ গুণ রিটার্ন দিতে পারে।",
-      "why_en": "Predicts specific return on investment which is not guaranteed.",
-      "why_hi": "यह रिटर्न का अनुमान लगाता है जो गारंटीड नहीं है।"
+      "quote": "I believe that can make you quick returns if you play it intelligently.",
+      "why_en": "Promising quick returns without any guarantees is risky and misleading.",
+      "why_hi": "जल्दी रिटर्न का वादा बिना किसी गारंटी के जोखिम भरा और गुमराह करने वाला होता है।"
+    },
+    {
+      "report_id": "ac96b7e4083e",
+      "video_title": "Is UDR crypto primed for 10X or an Exit Scam?",
+      "start": 48.76,
+      "category": "guaranteed_returns",
+      "severity": 2,
+      "quote": "I give alpha like these every single day that can actually make you money.",
+      "why_en": "Claiming to consistently provide profitable trades is a red flag for guaranteed returns.",
+      "why_hi": "लगातार मुनाफेदार ट्रेड देने का दावा खतरे का संकेत है, जो गारंटीड रिटर्न की ओर इशारा करता है।"
+    },
+    {
+      "report_id": "2b889172d439",
+      "video_title": "How to buy UDR coin on Solana without getting rugged?",
+      "start": 22.8,
+      "category": "price_prediction",
+      "severity": 2,
+      "quote": "you will be sitting in a good profit that is equivalent to 2x or more than that",
+      "why_en": "Promising a specific return like '2x' can mislead investors about the actual risks involved.",
+      "why_hi": "किसी खास रिटर्न जैसे '2x' का वादा करने से निवेशकों को वास्तविक जोखिम के बारे में पता नहीं चल पाता।"
+    },
+    {
+      "report_id": "ac96b7e4083e",
+      "video_title": "Is UDR crypto primed for 10X or an Exit Scam?",
+      "start": 193.44,
+      "category": "price_prediction",
+      "severity": 2,
+      "quote": "should pump for the next two to three days before dumping.",
+      "why_en": "Predicting exact price movements can mislead investors and lead to poor decision-making.",
+      "why_hi": "सटीक भावों का अनुमान लगाना निवेशकों को गुमराह कर सकता है और खराब निर्णय लेने की ओर ले जा सकता है।"
     }
   ],
   "headline": {
-    "en": "Promises guaranteed or unrealistic returns in 4 of 5 videos and gives buy/sell calls in 1 of 5 videos; not SEBI-registered as an adviser.",
-    "hi": "5 में से 4 वीडियो में गारंटीड या बहुत ज़्यादा रिटर्न का वादा करता है और 5 में से 1 वीडियो में खरीदने-बेचने की टिप देता है; सलाहकार के तौर पर SEBI-रजिस्टर्ड नहीं।"
+    "en": "Promises guaranteed or unrealistic returns in 2 of 5 videos and gives buy/sell calls in 1 of 5 videos; not SEBI-registered as an adviser.",
+    "hi": "5 में से 2 वीडियो में गारंटीड या बहुत ज़्यादा रिटर्न का वादा करता है और 5 में से 1 वीडियो में खरीदने-बेचने की टिप देता है; सलाहकार के तौर पर SEBI-रजिस्टर्ड नहीं।"
   }
 }

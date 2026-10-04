@@ -12,3 +12,4 @@ backend/data/speech/
 backend/data/*.sqlite
 SUBMISSION.md
 .~lock.*
+presentation/*.mp4

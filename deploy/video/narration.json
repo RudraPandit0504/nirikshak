@@ -1,0 +1,50 @@
+[
+ {
+  "id": "intro",
+  "text": "India now has more than sixteen crore demat accounts, and most new investors come from Tier-2 and Tier-3 towns. Many of them learn about markets from WhatsApp forwards and YouTube finfluencers. Nirikshak helps them check before they trust. It audits a video, a forwarded tip, or a creator, and explains the risks in plain English or Hindi."
+ },
+ {
+  "id": "msg_paste",
+  "text": "Let's start with the most common trap. Sunita receives this WhatsApp message. It claims her Zerodha account will be blocked, asks for an OTP, and wants a ninety-nine rupee fee. She pastes it into Nirikshak. She could also just drop in a screenshot."
+ },
+ {
+  "id": "msg_report",
+  "text": "In seconds, the verdict is clear: high risk. Every warning sign points to the exact line. The link pretends to be Zerodha but goes to a different website. The message asks for an OTP, and demands money on a UPI handle. And instead of a vague warning, Sunita gets three concrete steps: never share the OTP, don't pay, and contact the company through its official app, or call nineteen thirty."
+ },
+ {
+  "id": "vid_report",
+  "text": "Now a finfluencer video: three crypto coins that will make you a millionaire, with a hundred-x return guaranteed. Nirikshak read the whole transcript locally. Risk score: one hundred. The summary explains what the video is pitching, and the main concerns link straight to the moment they were said."
+ },
+ {
+  "id": "vid_registry",
+  "text": "Then the most important question: who is giving this advice? Nirikshak checks every name, website and registration number against more than six thousand SEBI-registered entities. This creator is not registered as a research analyst or adviser, so he is not allowed to give buy or sell calls. There is also no risk disclaimer."
+ },
+ {
+  "id": "vid_findings",
+  "text": "Every finding quotes the creator word for word, with the time, the category, how serious it is, and how confident the system is. Nothing is a black-box verdict: the user can always check the exact moment."
+ },
+ {
+  "id": "ask",
+  "text": "Users can also ask questions in their own words. Did he promise guaranteed returns? The answer comes only from what was actually said, with clickable timestamps as evidence."
+ },
+ {
+  "id": "ask_refuse",
+  "text": "But Nirikshak never gives investment advice. Asked whether to buy the coins, it declines, and instead points to what the video claimed and the creator's registration status."
+ },
+ {
+  "id": "hindi",
+  "text": "Everything works in Hindi too. One tap switches the whole report, the explanations and the summary, and a natural voice can read it aloud for users who find reading hard."
+ },
+ {
+  "id": "profile",
+  "text": "One video can be an outlier, so Nirikshak can also profile a creator. All five of this channel's latest uploads are high risk. Every one pushes a paid Telegram group and makes confident price predictions, and two promise guaranteed returns. That pattern is the real warning."
+ },
+ {
+  "id": "profile_good",
+  "text": "Compare that with a SEBI-registered research analyst: registration verified, low risk across recent videos. Nirikshak is not against finfluencers. It helps people tell education and registered research apart from promotion."
+ },
+ {
+  "id": "outro",
+  "text": "Nirikshak never recommends stocks, shows its uncertainty openly, and its full version runs entirely on the user's own computer, so private messages never leave it. It is investor-protection infrastructure that any institution can run, in Hindi and English, for the next crore investors."
+ }
+]
