@@ -66,6 +66,7 @@ REGISTRATION = {
         "no_advice": " Registration only matters for creators who give buy/sell calls or promise returns, and this video does not.",
         "no_advice_other": " This video gives no buy/sell tips or return promises, so that is not a concern here.",
         "checked": " We checked {n} names, websites and numbers linked to this video.",
+        "checked_one": " We checked the one name linked to this video.",
     },
     "hi": {
         "verified": "क्रिएटर SEBI में रजिस्टर्ड है ({entity}, {reg}){typo}।",
@@ -83,6 +84,7 @@ REGISTRATION = {
         "no_advice": " रजिस्ट्रेशन तभी ज़रूरी है जब कोई खरीदने-बेचने की टिप दे या रिटर्न का वादा करे, और यह वीडियो ऐसा नहीं करता।",
         "no_advice_other": " यह वीडियो खरीदने-बेचने की टिप या रिटर्न का वादा नहीं करता, इसलिए यहाँ यह चिंता की बात नहीं है।",
         "checked": " हमने इस वीडियो से जुड़े {n} नाम, वेबसाइट और नंबर जाँचे।",
+        "checked_one": " हमने इस वीडियो से जुड़ा एक नाम जाँचा।",
     },
 }
 
@@ -118,7 +120,8 @@ def registration_text(reg: RegistryCheck, channel: str, lang: str, advises: bool
     text = t[reg.verdict].format(entity=entity, reg=reg_no, typo=typo, cat=cat,
                                  nums=", ".join(reg.numbers_found), channel=channel or "this channel")
     if reg.verdict == "not_registered":
-        text += t["checked"].format(n=len(reg.checks)) if reg.checks else ""
+        if reg.checks:
+            text += t["checked_one"] if len(reg.checks) == 1 and "checked_one" in t else t["checked"].format(n=len(reg.checks))
         if not advises:
             return text + t["no_advice"]
     if reg.verdict == "registered_other" and not advises:

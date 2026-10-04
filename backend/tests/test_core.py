@@ -181,3 +181,39 @@ def test_verdict_prefers_adviser_and_flags_broker_only():
     assert verdict([ch([]), ch([adv], "guest")], False)[0] == "guests_registered"
     num = IdentityCheck(query="INH9", kind="number", role="number", source="description", hits=[])
     assert verdict([num, ch([])], True)[0] == "number_not_found"
+
+
+def _report(lines):
+    from nirikshak.models import RegistryCheck, Report, Source
+    reg = RegistryCheck(claims_registration=False, numbers_found=[], number_results={}, name_matches=[],
+                        disclaimer_found=False, disclaimer_quotes=[], verdict="not_registered")
+    segs = [Segment(start=i * 20.0, end=i * 20.0 + 20, text=t) for i, t in enumerate(lines)]
+    return Report(id="t", created_at="", source=Source(kind="youtube", title="T", duration=len(lines) * 20),
+                  segments=segs, claims=[], registry=reg, risk_score=0, risk_level="low",
+                  summary_en="", summary_hi="", model="", timings={})
+
+
+def test_bm25_retrieves_relevant_window_across_scripts():
+    from nirikshak import qa
+    r = _report(["welcome to the channel"] * 6 + ["इसमें पक्का मुनाफा मिलेगा गारंटी है"] + ["market news today"] * 6)
+    got = qa.retrieve(r, qa.tokens("guarantee गारंटी पक्का"), k=1)
+    assert 6 in got
+
+
+def test_advice_questions_are_detected_but_factual_ones_are_not():
+    from nirikshak.qa import ADVICE_RE
+    for q in ["Should I buy these coins?", "Will this stock double next year?", "क्या मुझे यह शेयर खरीदना चाहिए?"]:
+        assert ADVICE_RE.search(q), q
+    for q in ["Which stock does he recommend?", "How can I contact him?", "Did he promise guaranteed returns?"]:
+        assert not ADVICE_RE.search(q), q
+
+
+def test_answer_cleaning_and_citation_grounding(monkeypatch):
+    from nirikshak import qa
+    assert qa.clean_answer("He said it at [L3] (1:00). }, cited_lines: [3]") == "He said it at (1:00)."
+    r = _report(["intro", "buy XYZ at 100 target 150", "outro"])
+    replies = iter([{"kind": "video", "keywords": ["buy"]},
+                    {"answer": "He recommends XYZ [L1].", "cited_lines": [1, 99], "found": True}])
+    monkeypatch.setattr(qa, "_chat", lambda *a, **k: next(replies))
+    a = qa.ask(r, "Which stock does he recommend?")
+    assert a.kind == "video" and [c.line for c in a.citations] == [1] and "[L1]" not in a.answer

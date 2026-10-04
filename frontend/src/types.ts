@@ -141,3 +141,10 @@ export type JobEvent =
   | { type: 'progress'; stage: string; frac: number; msg: string; msg_hi?: string }
   | { type: 'done'; id: string }
   | { type: 'error'; msg: string }
+
+export interface AskAnswer {
+  answer: string
+  answer_en: string
+  kind: 'video' | 'general' | 'refused'
+  citations: { line: number; start: number; quote: string }[]
+}

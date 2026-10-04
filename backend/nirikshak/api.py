@@ -11,11 +11,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import sebi, tts
+from . import qa, sebi, tts
 from .analyse import LLMError
 from .categories import CATEGORIES
 from .config import LLM_MODEL, REPORTS_DIR, WORK_DIR
@@ -135,6 +136,53 @@ def speech(rid: str, lang: str = "en"):
         raise HTTPException(503, str(e)) from e
     media = "audio/mp4" if path.suffix == ".m4a" else "audio/wav"
     return FileResponse(path, media_type=media, headers={"Cache-Control": "no-cache"})
+
+
+class AskBody(BaseModel):
+    question: str
+    lang: str = "en"
+    history: list[dict] = []
+
+
+@app.post("/api/reports/{rid}/ask")
+async def ask(rid: str, body: AskBody):
+    """Answer a question about one report. Not queued behind audits: Ollama serialises
+    requests itself, and a question shouldn't wait minutes for an audit to finish."""
+    if not body.question.strip():
+        raise HTTPException(400, "Empty question")
+    report = Report.model_validate_json(_report_path(rid).read_text(encoding="utf-8"))
+    try:
+        ans = await asyncio.get_running_loop().run_in_executor(
+            None, lambda: qa.ask(report, body.question, body.lang, body.history))
+    except LLMError as e:
+        raise HTTPException(503, str(e)) from e
+    return ans
+
+
+@app.post("/api/transcribe")
+async def transcribe_question(file: UploadFile = File(...)):
+    """Turn a short spoken question into text with the local Whisper model."""
+    from .analyse import unload_models
+    from .ingest import to_wav
+    from .transcribe import transcribe
+
+    work = WORK_DIR / f"voice-{uuid.uuid4().hex[:8]}"
+    work.mkdir(parents=True)
+    try:
+        raw = work / "question.webm"
+        data = await file.read()
+        if len(data) > 10 * 1024 * 1024:
+            raise HTTPException(413, "Recording too long")
+        raw.write_bytes(data)
+
+        def run():
+            unload_models()  # free VRAM for Whisper
+            segs, lang = transcribe(to_wav(raw, work))
+            return {"text": " ".join(s.text for s in segs).strip(), "language": lang}
+
+        return await asyncio.get_running_loop().run_in_executor(executor, run)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 @app.get("/api/reports")

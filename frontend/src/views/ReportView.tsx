@@ -6,6 +6,7 @@ import {
 import { fmtTime, getReport } from '../api'
 import { useLang } from '../i18n'
 import type { Category, Claim, Meta, Report } from '../types'
+import AskPanel from '../components/AskPanel'
 import PrintReport from '../components/PrintReport'
 import { ReportBrief, ReportHero } from '../components/SummaryCard'
 import Glass from '../components/ui/Glass'
@@ -106,6 +107,10 @@ export default function ReportView({ id, meta }: { id: string; meta: Meta | null
 
         <div className="mt-5">
           <ReportBrief report={report} catLabel={cat} onSeek={source.video_id ? seek : undefined} />
+        </div>
+
+        <div className="mt-5">
+          <AskPanel reportId={report.id} onSeek={source.video_id ? seek : undefined} />
         </div>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -258,7 +263,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
         onClick={() => onChange(!checked)}
         className={`relative h-[26px] w-[44px] rounded-full transition-colors duration-300 ${checked ? 'bg-[#34c759]' : 'bg-[var(--hairline)] shadow-[inset_0_0_0_1px_var(--hairline)]'}`}
       >
-        <span className={`absolute top-[2px] size-[22px] rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,.25)] transition-transform duration-300 ease-[var(--ease-spring)] ${checked ? 'translate-x-[20px]' : 'translate-x-[2px]'}`} />
+        <span className={`absolute left-0 top-[2px] size-[22px] rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,.25)] transition-transform duration-300 ease-[var(--ease-spring)] ${checked ? 'translate-x-[20px]' : 'translate-x-[2px]'}`} />
       </button>
     </label>
   )
