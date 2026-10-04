@@ -51,4 +51,4 @@ cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i",
 subprocess.run(cmd, check=True)
 dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(out)],
                            capture_output=True, text=True).stdout)
-print(f"{out}  {dur / 60:.0f}:{dur % 60:04.1f}  frames kept {len(kept)}/{len(frames)}")
+print(f"{out}  {int(dur // 60)}:{dur % 60:04.1f}  frames kept {len(kept)}/{len(frames)}")

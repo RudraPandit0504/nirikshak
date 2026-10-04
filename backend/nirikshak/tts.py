@@ -93,8 +93,20 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+# How Indian speakers say these; the phonemizer gets them wrong as written (checked with Whisper).
+EN_RESPELL = {
+    "Nirikshak": "Nee-rick-shuck", "SEBI": "see-bee", "SEBI's": "see-bee's", "OTP": "O.T.P.", "OTPs": "O.T.P.s",
+    "UPI": "U.P.I.", "KYC": "K.Y.C.", "NSDL": "N.S.D.L.", "NSE": "N.S.E.", "BSE": "B.S.E.", "IPO": "I.P.O.",
+    "Zerodha": "Zeh-roe-dha", "demat": "dee-mat", "DEMAT": "dee-mat", "finfluencer": "fin-fluencer",
+    "finfluencers": "fin-fluencers", "APK": "A.P.K.", "RBI": "R.B.I.",
+}
+
+
 def normalise(text: str, lang: str) -> str:
     text = _clean(text)
+    if lang == "en":
+        for k, v in EN_RESPELL.items():
+            text = re.sub(rf"\b{re.escape(k)}\b", v, text)
     if lang == "hi":
         text = text.replace("rupees", "रुपये").replace(" times", " गुना").replace(" or ", " या ")
         text = re.sub(r"[A-Za-z]+", _hi_word, text)

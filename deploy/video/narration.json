@@ -1,47 +1,51 @@
 [
  {
   "id": "intro",
-  "text": "India now has more than sixteen crore demat accounts, and most new investors come from Tier-2 and Tier-3 towns. Many of them learn about markets from WhatsApp forwards and YouTube finfluencers. Nirikshak helps them check before they trust. It audits a video, a forwarded tip, or a creator, and explains the risks in plain English or Hindi."
+  "text": "India now has more than sixteen crore demat accounts, and many new investors learn about markets from WhatsApp forwards and YouTube finfluencers. Nirikshak helps them check before they trust. At the top of the home page are its three modes. YouTube video audits a finfluencer video. WhatsApp message checks a forwarded tip or a screenshot. And Creator profiles a whole channel."
  },
  {
   "id": "msg_paste",
-  "text": "Let's start with the most common trap. Sunita receives this WhatsApp message. It claims her Zerodha account will be blocked, asks for an OTP, and wants a ninety-nine rupee fee. She pastes it into Nirikshak. She could also just drop in a screenshot."
+  "text": "Let's start with the most common trap. Sunita receives this WhatsApp message. She opens the WhatsApp message tab and pastes it into the box. She could also drop in a screenshot instead. Then she taps Check message."
  },
  {
   "id": "msg_report",
-  "text": "In seconds, the verdict is clear: high risk. Every warning sign points to the exact line. The link pretends to be Zerodha but goes to a different website. The message asks for an OTP, and demands money on a UPI handle. And instead of a vague warning, Sunita gets three concrete steps: never share the OTP, don't pay, and contact the company through its official app, or call nineteen thirty."
+  "text": "Moments later, the verdict is clear: high risk. Under Main concerns, every warning sign points to the exact line. The link pretends to be Zerodha but goes to a different website. The message asks for an OTP, and demands money on a UPI handle. Under What you should do, Sunita gets concrete steps: never share the OTP, don't pay, and contact the company through its official app, or call nineteen thirty. The Forwarded message tab shows her original message with the risky lines highlighted."
+ },
+ {
+  "id": "vid_audit",
+  "text": "Now a finfluencer video. Back on the home page, in the YouTube video tab, we paste the video link and tap Audit video. Nirikshak fetches the captions, or transcribes the speech itself, scans for risky phrases, has the AI read the whole transcript, and checks the SEBI registry."
  },
  {
   "id": "vid_report",
-  "text": "Now a finfluencer video: three crypto coins that will make you a millionaire, with a hundred-x return guaranteed. Nirikshak read the whole transcript locally. Risk score: one hundred. The summary explains what the video is pitching, and the main concerns link straight to the moment they were said."
+  "text": "This video promises three crypto coins that will make you a millionaire, with a hundred-x return guaranteed. At the top is the risk score, and a plain-language summary of what the video is pitching. Each main concern links straight to the moment it was said."
  },
  {
   "id": "vid_registry",
-  "text": "Then the most important question: who is giving this advice? Nirikshak checks every name, website and registration number against more than six thousand SEBI-registered entities. This creator is not registered as a research analyst or adviser, so he is not allowed to give buy or sell calls. There is also no risk disclaimer."
+  "text": "Next, the SEBI registration card answers the most important question: who is giving this advice? Nirikshak checks every name, website and registration number against more than six thousand SEBI-registered entities. This creator is not registered as a research analyst or adviser, so he is not allowed to give buy or sell calls. There is also no risk disclaimer."
  },
  {
   "id": "vid_findings",
-  "text": "Every finding quotes the creator word for word, with the time, the category, how serious it is, and how confident the system is. Nothing is a black-box verdict: the user can always check the exact moment."
+  "text": "Further down, every finding quotes the creator word for word, with the time, the category, how serious it is, and how confident the system is. Nothing is a black-box verdict: the user can always check the exact moment."
  },
  {
   "id": "ask",
-  "text": "Users can also ask questions in their own words. Did he promise guaranteed returns? The answer comes only from what was actually said, with clickable timestamps as evidence."
+  "text": "Below the findings is the Ask about this video panel. Users can tap a suggested question, or type their own. Did he promise guaranteed returns? The answer comes only from what was actually said, with clickable timestamps as evidence."
  },
  {
   "id": "ask_refuse",
-  "text": "But Nirikshak never gives investment advice. Asked whether to buy the coins, it declines, and instead points to what the video claimed and the creator's registration status."
+  "text": "Now we type: should I buy these coins? Nirikshak never gives investment advice. It declines, and instead points to what the video claimed and the creator's registration status."
  },
  {
   "id": "hindi",
-  "text": "Everything works in Hindi too. One tap switches the whole report, the explanations and the summary, and a natural voice can read it aloud for users who find reading hard."
+  "text": "Everything works in Hindi too. The Hindi button at the top switches the whole report, the explanations and the summary. And the Listen button reads it aloud in a natural voice, for users who find reading hard."
  },
  {
   "id": "profile",
-  "text": "One video can be an outlier, so Nirikshak can also profile a creator. All five of this channel's latest uploads are high risk. Every one pushes a paid Telegram group and makes confident price predictions, and two promise guaranteed returns. That pattern is the real warning."
+  "text": "One video can be an outlier. So the third mode, Creator, profiles a whole channel: paste a channel link, and choose how many recent videos to audit. Profiles already built appear below. This crypto channel scores high risk overall. All five of its latest uploads push a paid Telegram group and make confident price predictions, and two promise guaranteed returns. That pattern is the real warning."
  },
  {
   "id": "profile_good",
-  "text": "Compare that with a SEBI-registered research analyst: registration verified, low risk across recent videos. Nirikshak is not against finfluencers. It helps people tell education and registered research apart from promotion."
+  "text": "Compare that with a SEBI-registered research analyst: registration verified, and low risk across recent videos. Nirikshak is not against finfluencers. It helps people tell education and registered research apart from promotion."
  },
  {
   "id": "outro",

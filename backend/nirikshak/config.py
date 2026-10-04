@@ -23,7 +23,8 @@ WINDOW_SECONDS = int(os.environ.get("NIRIKSHAK_WINDOW", "90"))
 MAX_DURATION = int(os.environ.get("NIRIKSHAK_MAX_DURATION", str(45 * 60)))
 
 # Read-aloud voices (Kokoro-82M). Chosen by a Whisper-CER + UTMOS benchmark, see README.
-TTS_VOICE_EN = os.environ.get("NIRIKSHAK_TTS_EN", "af_heart")
+# hf_alpha speaking English gives an Indian accent and says "Nirikshak"/"SEBI" correctly (Whisper check).
+TTS_VOICE_EN = os.environ.get("NIRIKSHAK_TTS_EN", "hf_alpha")
 TTS_VOICE_HI = os.environ.get("NIRIKSHAK_TTS_HI", "hf_alpha")
 
 for d in (DATA_DIR, WORK_DIR, REPORTS_DIR, MODELS_DIR, SPEECH_DIR):

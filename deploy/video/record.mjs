@@ -64,6 +64,7 @@ window.__demo = {
   skipChip(t) { this.ensure(); const s=document.getElementById('__skip'); s.textContent=t; s.style.opacity=1; setTimeout(()=>s.style.opacity=0, 1600) },
   find(q) {
     if (q.startsWith('css:')) return document.querySelector(q.slice(4))
+    if (q.startsWith('tab:')) return [...document.querySelectorAll('[role=tab]')].find(e => e.textContent.includes(q.slice(4)))
     const els = [...document.querySelectorAll('button,a,[role=tab],label,h1,h2,p,span')].filter(e => e.offsetParent && e.textContent.trim().includes(q))
     return els.sort((a,b) => a.textContent.length - b.textContent.length)[0]
   },
@@ -93,13 +94,14 @@ window.__demo = {
 const markers = { scenes: [], skips: [] }
 let sceneStart = 0
 const scene = async (sid, fn) => {
+  skippedInScene = 0 // only waits cut *inside* this scene shorten it (fixes 40 s of dead air)
   await ev(`__demo.caption(${JSON.stringify(narr[sid])})`)
   sceneStart = Date.now()
   markers.scenes.push({ id: sid, t: Date.now() / 1000 })
   await fn()
   const left = durs[sid] * 1000 + 700 - (Date.now() - sceneStart - skippedInScene)
-  skippedInScene = 0
   if (left > 0) await sleep(left)
+  await ev("__demo.caption('')")
 }
 let skippedInScene = 0
 const skipUntil = async (cond, label, timeout = 240) => {
@@ -108,7 +110,8 @@ const skipUntil = async (cond, label, timeout = 240) => {
   const t1 = Date.now() / 1000
   markers.skips.push({ from: t0 + 0.6, to: t1 - 0.2, label })
   skippedInScene += Math.max(0, (t1 - t0 - 0.8) * 1000)
-  await ev(`__demo.skipChip(${JSON.stringify(label)})`)
+  // Show the real waiting time that was cut, not a guess.
+  await ev(`__demo.skipChip(${JSON.stringify(label.replace('{s}', Math.round(t1 - t0)))})`)
 }
 const go = async (hash, wait = 1800) => { await ev(`location.hash = ${JSON.stringify(hash)}`); await sleep(wait); await ev('__demo.ensure()') }
 
@@ -123,37 +126,54 @@ await send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: W * 
 await sleep(600)
 
 const MSG = 'Dear Customer, your Zerodha DEMAT account will be blocked today due to KYC pending.\nUpdate your KYC immediately: http://zerodha-kyc-update.in/verify\nOur executive will call you, please share the OTP to complete verification.\nNo charges, only ₹99 processing fee to UPI kyc.help@ybl'
+const VIDEO = 'https://www.youtube.com/watch?v=ea_OptyJBqw'
+let fresh = ''
 const R = JSON.parse(readFileSync(`${out}/ids.json`, 'utf8'))
 
-// 1. Intro
+const HOME = 'css:header a[href="#/"]'
+// 1. Intro: introduce the three modes on the home page
 await scene('intro', async () => {
-  await sleep(4500)
-  await ev('__demo.scroll(560, 2600)'); await sleep(3500)
-  await ev('__demo.scroll(-560, 1800)')
+  await sleep(7500)
+  await ev("__demo.point('tab:YouTube video')"); await sleep(2600)
+  await ev("__demo.point('tab:WhatsApp message')"); await sleep(2600)
+  await ev("__demo.point('tab:Creator')")
 })
 // 2. WhatsApp message
 await scene('msg_paste', async () => {
-  await ev("__demo.click('WhatsApp message')"); await sleep(900)
+  await sleep(2500)
+  await ev("__demo.click('tab:WhatsApp message')"); await sleep(1200)
   await ev(`__demo.type('textarea', ${JSON.stringify(MSG)}, 16)`); await sleep(800)
+  await ev("__demo.point('Or drop a screenshot')"); await sleep(2200)
   await ev("__demo.point('Check message')")
 })
 await ev("__demo.click('Check message')")
-await skipUntil("location.hash.includes('/report/')", '⏩  ~20 s later')
+await skipUntil("location.hash.includes('/report/')", '⏩  {s} s later (sped up)')
 await sleep(1500)
 await ev('__demo.ensure()')
 await scene('msg_report', async () => {
-  await sleep(3500)
-  await ev("__demo.scrollTo('Main concerns')"); await sleep(5000)
-  await ev("__demo.point('What you should do')"); await sleep(5500)
-  await ev("__demo.click('Forwarded message')"); await sleep(600)
-  await ev("__demo.scrollTo('Findings')")
+  await ev("__demo.point('High risk')"); await sleep(2000)
+  await ev("__demo.scrollTo('Main concerns')"); await sleep(9000)
+  await ev("__demo.scrollTo('What you should do')"); await sleep(9000)
+  await ev("__demo.click('tab:Forwarded message')"); await sleep(900)
 })
-// 3. Finfluencer video report
-await go(`/report/${R.crypto}`)
+// 3. Finfluencer video: audit it live from the home page
+await ev(`__demo.click(${JSON.stringify(HOME)})`); await sleep(1500)
+await scene('vid_audit', async () => {
+  await sleep(2500)
+  await ev("__demo.click('tab:YouTube video')"); await sleep(1000)
+  await ev(`__demo.type('input[type=url], form input', ${JSON.stringify(VIDEO)}, 40)`); await sleep(700)
+  await ev("__demo.click('Audit video')")
+  await sleep(9000) // let the progress stages show while the narration explains them
+})
+await skipUntil("location.hash.includes('/report/')", '⏩  audit finished: {s} s later (sped up)', 900)
+await sleep(2000)
+await ev('__demo.ensure()')
+fresh = (await ev('location.hash')).split('/report/')[1]
 await scene('vid_report', async () => {
-  await sleep(6000)
+  await sleep(2500)
+  await ev("__demo.point('Risk score')"); await sleep(4000)
   await ev("__demo.scrollTo('Main concerns')"); await sleep(4000)
-  await ev("__demo.point('Price prediction')")
+  await ev("__demo.point('Guaranteed')")
 })
 await scene('vid_registry', async () => {
   await ev("__demo.scrollTo('Ask about this video')"); await sleep(300)
@@ -168,42 +188,53 @@ await scene('vid_findings', async () => {
 // 4. Ask the video
 await ev("__demo.scrollTo('Ask about this video')")
 await scene('ask', async () => {
+  await ev("__demo.point('Ask about this video')"); await sleep(3500)
   await ev("__demo.click('Did they promise guaranteed returns?')")
-  await skipUntil("!document.body.innerText.includes('Thinking')", '⏩  ~15 s later')
+  await skipUntil("!document.body.innerText.includes('Thinking')", '⏩  {s} s later (sped up)')
   await sleep(800)
 })
 await scene('ask_refuse', async () => {
+  await ev("__demo.point(\"css:input[aria-label^='Ask anything']\")")
   await ev(`__demo.type("input[aria-label^='Ask anything']", 'Should I buy these coins?', 30)`)
   await ev("document.querySelector(\"input[aria-label^='Ask anything']\").form.requestSubmit()")
-  await skipUntil("document.body.innerText.includes('Not investment advice')", '⏩  ~15 s later')
+  await skipUntil("document.body.innerText.includes('Not investment advice')", '⏩  {s} s later (sped up)')
   await sleep(500); await ev("__demo.scrollTo('Not investment advice')")
 })
 // 5. Hindi
 await scene('hindi', async () => {
   await ev('window.scrollTo({top:0, behavior:"smooth"})'); await sleep(900)
-  await ev("__demo.click('हिं')"); await sleep(2500)
-  await ev("__demo.point('सुनें')"); await sleep(2500)
+  await ev("__demo.click('हिं')"); await sleep(3500)
+  await ev("__demo.point('सुनें')"); await sleep(3000)
   await ev("__demo.scrollTo('मुख्य खतरे')")
 })
+await ev('window.scrollTo({top:0, behavior:"smooth"})'); await sleep(700)
 await ev("__demo.click('EN')"); await sleep(800)
-// 6. Creator profiles
-await go(`/profile/${R.badProfile}`)
+// 6. Creator profiles, reached from the Creator tab on the home page
+await ev(`__demo.click(${JSON.stringify(HOME)})`); await sleep(1500)
 await scene('profile', async () => {
-  await sleep(4500)
-  await ev("__demo.scrollTo('How often red flags appear')"); await sleep(4000)
+  await sleep(1500)
+  await ev("__demo.click('tab:Creator')"); await sleep(1500)
+  await ev("__demo.point('css:form input')"); await sleep(2500)
+  await ev("__demo.point('tab:8')"); await sleep(2000)
+  await ev("__demo.scrollTo('Creator profiles')"); await sleep(1500)
+  await ev(`__demo.click('css:a[href="#/profile/${R.badProfile}"]')`); await sleep(3500)
+  await ev("__demo.ensure()")
+  await ev("__demo.scrollTo('How often red flags appear')"); await sleep(3500)
   await ev("__demo.point('Guaranteed or unrealistic returns')")
 })
-await go(`/profile/${R.goodProfile}`)
+await ev(`__demo.click(${JSON.stringify(HOME)})`); await sleep(1200)
 await scene('profile_good', async () => {
-  await sleep(4500)
+  await ev("__demo.scrollTo('Creator profiles')"); await sleep(800)
+  await ev(`__demo.click('css:a[href="#/profile/${R.goodProfile}"]')`); await sleep(3000)
+  await ev("__demo.ensure()")
   await ev("__demo.point('Quoted registration number is valid')"); await sleep(3000)
   await ev("__demo.scrollTo('Risk across recent videos')")
 })
 // 7. Outro
-await go('/')
+await ev(`__demo.click(${JSON.stringify(HOME)})`); await sleep(1200)
 await scene('outro', async () => {
   await sleep(2000)
-  await ev("__demo.point('YouTube video')")
+  await ev("__demo.point('tab:YouTube video')")
 })
 await ev("__demo.caption('')")
 await sleep(1200)
@@ -211,6 +242,7 @@ await send('Page.stopScreencast')
 markers.end = Date.now() / 1000
 writeFileSync(`${out}/frames.json`, JSON.stringify(frames))
 writeFileSync(`${out}/markers.json`, JSON.stringify(markers, null, 1))
-console.log('frames', frames.length, 'scenes', markers.scenes.length, 'skips', markers.skips.length)
+writeFileSync(`${out}/fresh.txt`, fresh)
+console.log('fresh report', fresh, 'frames', frames.length, 'scenes', markers.scenes.length, 'skips', markers.skips.length)
 ws.close()
 chrome.kill()
