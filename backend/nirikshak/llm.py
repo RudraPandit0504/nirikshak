@@ -16,10 +16,14 @@ import os
 import random
 import time
 
+import logging
+
 import httpx
 
 from .config import HI_MODEL, LLM_MODEL, OLLAMA_URL
 
+log = logging.getLogger("nirikshak.llm")
+USED: dict[str, int] = {}  # which cloud model answered, for logs and evals
 PROVIDER = os.environ.get("NIRIKSHAK_PROVIDER", "ollama").lower()
 if PROVIDER in ("gemini", "groq"):
     PROVIDER = "cloud"
@@ -32,16 +36,17 @@ def _models(var: str, default: str) -> list[str]:
 # (name, endpoint, key env var, text models, vision models). All are OpenAI-compatible.
 CLOUD = [
     ("groq", "https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY",
-     _models("NIRIKSHAK_GROQ_MODELS", "openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b"),
+     _models("NIRIKSHAK_GROQ_MODELS", "openai/gpt-oss-120b"),
      _models("NIRIKSHAK_GROQ_VISION", "")),  # Groq has no vision model now; Gemini reads screenshots
     ("gemini", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "GEMINI_API_KEY",
-     _models("NIRIKSHAK_GEMINI_MODELS", "gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash"),
-     _models("NIRIKSHAK_GEMINI_VISION", "gemini-2.5-flash,gemini-2.5-flash-lite")),
+     _models("NIRIKSHAK_GEMINI_MODELS", "gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash,gemini-2.5-flash"),
+     _models("NIRIKSHAK_GEMINI_VISION", "gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite")),
 ]
 
 
-# Gemini first: its free tier allows far more tokens per minute than Groq's (8k), which one video window can use up.
-ORDER = _models("NIRIKSHAK_CLOUD_ORDER", "gemini,groq")
+# Groq first (fast, ~1000 requests/day per model); when it asks us to wait (8k tokens/min free limit),
+# move straight on to Gemini, whose free models have small daily quotas but each its own.
+ORDER = _models("NIRIKSHAK_CLOUD_ORDER", "groq,gemini")
 
 
 def _available() -> list[tuple]:
@@ -120,11 +125,21 @@ def _cloud_post(base: dict, schema: dict | None = None, vision: bool = False) ->
                 continue
             if r.status_code in (429, 500, 502, 503, 504):  # rate limit / overload: retry once, then next model
                 last = f"{name} {model}: {r.status_code}"
+                try:
+                    wait = float(r.headers.get("retry-after", 0))
+                except ValueError:
+                    wait = 0
+                if wait > 6:  # long wait (e.g. daily quota): don't block the user, try the next model now
+                    log.warning("%s, retry-after %.0fs: next model", last, wait)
+                    break
+                log.warning("%s, retrying", last)
                 time.sleep(2 + 3 * attempt + random.random())
                 continue
             if r.status_code >= 400:  # unknown/retired model, unsupported option, bad key: next model
                 last = f"{name} {model}: {r.status_code} {r.text[:200]}"
+                log.warning("skipping %s", last)
                 break
+            USED[f"{name}/{model}"] = USED.get(f"{name}/{model}", 0) + 1
             return r.json()
     raise LLMError(f"The AI service is busy right now ({last}). Please try again in a minute.")
 

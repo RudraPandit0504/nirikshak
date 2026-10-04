@@ -84,3 +84,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    from nirikshak import llm
+    if llm.USED:
+        print("answered by:", llm.USED)
