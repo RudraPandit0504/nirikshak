@@ -73,18 +73,33 @@ def _explain_registration_claims(claims: list[Claim], reg: RegistryCheck) -> Non
             c.why_en, c.why_hi = text, ""
 
 
+# How much each kind of red flag counts. Fraud signals and promised returns weigh most; common
+# finfluencer habits (own course/sponsor plugs, hedged forecasts, hype) weigh less on their own.
+CAT_WEIGHT = {
+    "guaranteed_returns": 1.2, "stock_tip": 1.0, "misleading_claim": 0.8, "registration_claim": 1.0,
+    "paid_group": 0.7, "paid_promotion": 0.55, "price_prediction": 0.6, "urgency_fomo": 0.6,
+    "credential_request": 1.4, "upfront_payment": 1.2, "impersonation": 1.3, "suspicious_link": 1.0,
+}
+# What a SEBI-registered research analyst/adviser may legitimately do (publish research and price
+# targets, sell their own research service): counts much less when the registration is verified.
+ADVISER_SOFTEN = {"stock_tip": 0.4, "price_prediction": 0.5, "paid_group": 0.5, "paid_promotion": 0.6}
+
+
 def score(claims: list[Claim], reg: RegistryCheck) -> tuple[int, str]:
-    """0-100. Each category contributes its top-3 claims (severity × confidence), so one
-    repeated phrase cannot dominate, and several different kinds of red flag add up."""
+    """0-100. Within a category, the strongest claim counts fully and the next two with diminishing
+    weight (1, 0.5, 0.25), so repeating one phrase cannot dominate, while several different kinds
+    of red flag still add up. Weak claims (confidence below 0.5) are shown but not scored."""
     by_cat: dict[str, list[float]] = {}
     for c in claims:
-        w = c.severity * c.confidence * 9
-        if c.category == "stock_tip" and reg.verdict in ADVISER_OK:
-            w *= 0.5  # registered analysts may legally publish research
+        if c.confidence < 0.5:
+            continue
+        w = c.severity * c.confidence * 9 * CAT_WEIGHT.get(c.category, 1.0)
+        if reg.verdict in ADVISER_OK:
+            w *= ADVISER_SOFTEN.get(c.category, 1.0)
         if c.category == "registration_claim":
             w = 0 if reg.verdict in ("verified", "matched") else (12 if reg.verdict == "number_not_found" else 3)
         by_cat.setdefault(c.category, []).append(w)
-    total = sum(sum(sorted(ws, reverse=True)[:3]) for ws in by_cat.values())
+    total = sum(sum(w * k for w, k in zip(sorted(ws, reverse=True), (1, 0.5, 0.25))) for ws in by_cat.values())
     gives_tips = any(c.category in ("stock_tip", "guaranteed_returns") and c.confidence >= 0.5 for c in claims)
     if gives_tips and reg.verdict in NOT_ALLOWED:
         total += 15

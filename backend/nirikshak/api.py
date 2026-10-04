@@ -31,7 +31,7 @@ executor = ThreadPoolExecutor(max_workers=1)
 
 # When hosted with a shared API key, each visitor gets a small budget so the key can't be drained.
 HOSTED = llm.PROVIDER != "ollama"
-LIMITS = {"audit": (4, 3600), "message": (12, 3600), "profile": (1, 3600), "ask": (30, 3600)}
+LIMITS = {"audit": (20, 3600), "message": (40, 3600), "profile": (6, 3600), "ask": (80, 3600)}
 _hits: dict[tuple[str, str], list[float]] = {}
 
 

@@ -73,6 +73,11 @@ Rules:
 - why_en: one plain-English sentence explaining to a first-time investor why this is a warning sign.
 - Never judge whether a stock or product is good or bad, and never give investment advice yourself.
 - Captions may be auto-generated and contain recognition errors; interpret charitably.
+- Be conservative and fair: most finance videos are mostly legitimate. When unsure, do not flag it, or flag it with confidence below 0.5.
+- Analysis is not advice: discussing a company's results, valuation, growth, margins, sector or risks, or giving a balanced view, is education. stock_tip needs an explicit instruction to buy, sell or hold a specific security, or an entry/target/stop-loss.
+- price_prediction needs a specific price or return presented as likely. Hedged views ("could", "may", "if", scenarios, bull/bear cases) are severity 1 with confidence at most 0.5.
+- A clearly disclosed sponsor, or the creator's own course, app or community mentioned in passing, is severity 1. Use severity 2+ only when viewers are pressured to pay or join.
+- urgency_fomo needs explicit pressure to act now ("buy today", "last chance", "don't miss"), not just topical news.
 - If nothing qualifies, return {{"claims": []}}."""
 
 
